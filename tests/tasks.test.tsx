@@ -35,11 +35,11 @@ const item = (id: string, task_id: string, kind: 'scope' | 'test', text: string,
   id, created_at: null, task_id, kind, text, done, position,
 })
 
-const person = { created_at: null, role: null, area: null, email: null, access: 'member' as const }
+const person = { created_at: null, role: null, area: null, email: null, uid: null }
 const project = { created_at: null, kind: 'projeto' as const, status_level: 'on' as const, status_label: 'x', summary: null, deadline: null, facts: [], sections: [] }
 
 const base = {
-  loading: false, error: null, members: [], pages: [],
+  loading: false, error: null, loaded: true, memberUids: [], members: [], pages: [],
   people: [{ ...person, id: 'a', name: 'Ana Souza' }],
   projects: [
     { ...project, id: 'p1', position: 1, number: '01', title: 'Portal' },

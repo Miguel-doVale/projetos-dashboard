@@ -22,7 +22,8 @@ export interface Person {
   role: string | null
   area: string | null
   email: string | null
-  access: Access
+  /** UID do login no Firebase; nulo enquanto a pessoa não tem login. */
+  uid: string | null
 }
 
 export interface Project {

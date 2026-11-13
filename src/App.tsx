@@ -17,8 +17,9 @@ function Centered({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { loading, error, reload } = useData()
-  if (error) {
+  const { loading, error, loaded, reload } = useData()
+  // Tela cheia de erro só quando nada carregou ainda; depois disso, só um aviso.
+  if (error && !loaded) {
     return (
       <Centered>
         <p role="alert" className="text-sm text-destructive">{error}</p>
@@ -36,17 +37,24 @@ function AppRoutes() {
     )
   }
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Overview />} />
-        <Route path="projetos" element={<Projects />} />
-        <Route path="projetos/:id" element={<ProjectPage />} />
-        <Route path="tarefas" element={<Tasks />} />
-        <Route path="pessoas" element={<People />} />
-        <Route path="p/:slug" element={<CustomPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      {error && (
+        <p role="alert" className="bg-surface-raised px-6 py-2 text-center text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Overview />} />
+          <Route path="projetos" element={<Projects />} />
+          <Route path="projetos/:id" element={<ProjectPage />} />
+          <Route path="tarefas" element={<Tasks />} />
+          <Route path="pessoas" element={<People />} />
+          <Route path="p/:slug" element={<CustomPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </>
   )
 }
 

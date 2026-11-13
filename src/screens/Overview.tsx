@@ -1,12 +1,13 @@
 import { Link } from 'react-router'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading } from '@/blocks/Sections'
+import { ImportSeedButton } from '@/data/ImportSeedButton'
 import { useData } from '@/data/DataProvider'
 import { overviewStats, progressOf } from '@/lib/derive'
 
 export default function Overview() {
-  const { projects, tasks, people } = useData()
-  const stats = overviewStats(projects, tasks, people)
+  const { projects, tasks, people, memberUids } = useData()
+  const stats = overviewStats(projects, tasks, people, memberUids)
   return (
     <>
       <header className="mb-14 max-w-3xl">
@@ -15,6 +16,8 @@ export default function Overview() {
           Onde cada projeto está.
         </h1>
       </header>
+
+      <ImportSeedButton />
 
       <dl className="mb-16 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (

@@ -34,7 +34,13 @@ export function progressOf(projectId: string, tasks: Task[]): { done: number; to
   return { done: own.filter((t) => t.status === 'done').length, total: own.length }
 }
 
-export function overviewStats(projects: Project[], tasks: Task[], people: Person[]): Fact[] {
+/** Pessoa com login que é a dona ou está em `members`. */
+export function hasAccess(person: Person, memberUids: string[]): boolean {
+  if (!person.uid) return false
+  return person.uid === import.meta.env.VITE_OWNER_UID || memberUids.includes(person.uid)
+}
+
+export function overviewStats(projects: Project[], tasks: Task[], people: Person[], memberUids: string[]): Fact[] {
   const count = (kind: Project['kind']) => String(projects.filter((p) => p.kind === kind).length)
   return [
     { label: 'Projetos', value: count('projeto') },
@@ -45,6 +51,6 @@ export function overviewStats(projects: Project[], tasks: Task[], people: Person
       label: 'Com prazo definido',
       value: String(projects.filter((p) => typeof p.deadline === 'string' && p.deadline !== '').length),
     },
-    { label: 'Pessoas com acesso', value: String(people.filter((p) => p.access !== 'none').length) },
+    { label: 'Pessoas com acesso', value: String(people.filter((p) => hasAccess(p, memberUids)).length) },
   ]
 }

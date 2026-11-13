@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { overviewStats, progressOf, projectsOf, teamOf } from '@/lib/derive'
 import type { Person, Project, ProjectMember, Task } from '@/lib/types'
 
-const person = (id: string, name: string, access: Person['access'] = 'member'): Person => ({
-  id, created_at: null, name, role: null, area: null, email: null, access,
+const person = (id: string, name: string, uid: string | null = null): Person => ({
+  id, created_at: null, name, role: null, area: null, email: null, uid,
 })
 const member = (id: string, project_id: string, person_id: string, is_lead = false): ProjectMember => ({
   id, created_at: null, project_id, person_id, role: 'Dev', is_lead,
@@ -41,7 +41,8 @@ describe('derive', () => {
     const stats = overviewStats(
       [project('p', 'projeto', '12/12'), project('q', 'gadget', null), project('r', 'projeto', '')],
       [task('1', 'p', 'done'), task('2', 'p', 'todo')],
-      [person('a', 'Ana', 'owner'), person('b', 'Bia', 'none')],
+      [person('a', 'Ana', 'ua'), person('b', 'Bia', 'ub'), person('c', 'Caio')],
+      ['ua'],
     )
     const get = (l: string) => stats.find((s) => s.label === l)?.value
     expect(get('Projetos')).toBe('2')

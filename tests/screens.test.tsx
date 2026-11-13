@@ -19,7 +19,7 @@ vi.mock('@/data/DataProvider', () => ({
 }))
 
 const person = (id: string, name: string, role: string | null, area: string | null): Person => ({
-  id, created_at: null, name, role, area, email: null, access: 'member',
+  id, created_at: null, name, role, area, email: null, uid: null,
 })
 const project = (id: string, position: number, title: string, over: Partial<Project> = {}): Project => ({
   id, created_at: null, position, number: String(position).padStart(2, '0'), title, kind: 'projeto',
@@ -28,7 +28,7 @@ const project = (id: string, position: number, title: string, over: Partial<Proj
 })
 
 const base: DataState = {
-  loading: false, error: null, reload: async () => {}, sprints: [], items: [],
+  loading: false, error: null, loaded: true, memberUids: [], reload: async () => {}, sprints: [], items: [],
   people: [person('a', 'Ana Souza', 'Dev', 'Projetos'), person('b', 'Beto Lima', null, null)],
   projects: [
     project('p2', 2, 'Segundo'),

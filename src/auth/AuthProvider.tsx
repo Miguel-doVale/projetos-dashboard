@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth'
+import type { User } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, db } from '@/lib/firebase'
 import type { Access } from '@/lib/types'
 
 interface AuthState {
@@ -14,78 +16,87 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+const WRONG_CREDENTIALS = new Set([
+  'auth/invalid-credential',
+  'auth/wrong-password',
+  'auth/user-not-found',
+  'auth/invalid-email',
+])
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
   const [access, setAccess] = useState<Access>('none')
   const [accessFor, setAccessFor] = useState<string | null>(null)
 
   useEffect(() => {
-    let active = true
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (active) setSession(data.session)
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setSessionReady(true)
-      })
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next)
-      setSessionReady(true)
-    })
-    return () => {
-      active = false
-      data.subscription.unsubscribe()
-    }
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (next) => {
+        setUser(next)
+        setSessionReady(true)
+      },
+      () => {
+        setUser(null)
+        setSessionReady(true)
+      },
+    )
+    return unsubscribe
   }, [])
 
-  const userId = session?.user.id ?? null
+  const uid = user?.uid ?? null
 
   useEffect(() => {
-    if (!userId) return
+    if (!uid) {
+      // Ao sair, o nível guardado é descartado.
+      setAccess('none')
+      setAccessFor(null)
+      return
+    }
     let active = true
     const settle = (next: Access) => {
       if (!active) return
       setAccess(next)
-      setAccessFor(userId)
+      setAccessFor(uid)
     }
-    Promise.resolve(supabase.rpc('current_access')).then(
-      ({ data, error }) => settle(!error && (data === 'owner' || data === 'member') ? data : 'none'),
-      () => settle('none'),
-    )
+    if (uid === import.meta.env.VITE_OWNER_UID) {
+      settle('owner')
+    } else {
+      getDoc(doc(db, 'members', uid)).then(
+        (snap) => settle(snap.exists() ? 'member' : 'none'),
+        () => settle('none'),
+      )
+    }
     return () => {
       active = false
     }
-  }, [userId])
+  }, [uid])
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (!error) return null
-      if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message)) {
-        return 'E-mail ou senha incorretos.'
-      }
-    } catch {
-      // cai na mensagem genérica
+      await signInWithEmailAndPassword(auth, email, password)
+      return null
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code ?? ''
+      if (WRONG_CREDENTIALS.has(code)) return 'E-mail ou senha incorretos.'
+      if (code === 'auth/too-many-requests') return 'Muitas tentativas. Tente de novo em alguns minutos.'
     }
     return 'Não foi possível entrar. Tente de novo.'
   }, [])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    await fbSignOut(auth)
   }, [])
 
   const value = useMemo<AuthState>(
     () => ({
-      loading: !sessionReady || (userId !== null && accessFor !== userId),
-      email: session?.user.email ?? null,
-      access: userId ? access : 'none',
+      loading: !sessionReady || (uid !== null && accessFor !== uid),
+      email: user?.email ?? null,
+      access: uid ? access : 'none',
       signIn,
       signOut,
     }),
-    [sessionReady, userId, accessFor, session, access, signIn, signOut],
+    [sessionReady, uid, accessFor, user, access, signIn, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

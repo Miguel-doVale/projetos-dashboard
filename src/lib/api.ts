@@ -1,29 +1,115 @@
-import { supabase } from '@/lib/supabase'
-import type { Row, TableName, Task } from '@/lib/types'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore'
+import type { DocumentReference } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import type { Person, Row, TableName, Task } from '@/lib/types'
 
-type DbError = { message: string; code?: string }
+// Limite do Firestore por lote de escrita.
+const BATCH_LIMIT = 500
+// Limite do operador `in` em consultas.
+const IN_LIMIT = 30
 
-function fail(error: DbError | null, fallback: string): void {
-  if (!error) return
-  if (error.code === '42501' || /row-level security|acesso negado|permission denied/i.test(error.message)) {
-    throw new Error('Você não tem permissão para fazer isso.')
+export type WriteOp =
+  | { type: 'set'; ref: DocumentReference; data: Record<string, unknown> }
+  | { type: 'update'; ref: DocumentReference; data: Record<string, unknown> }
+  | { type: 'delete'; ref: DocumentReference }
+
+/** Aplica as operações em lotes de até 500. Cada lote é atômico; o conjunto, não. */
+export async function runBatched(ops: WriteOp[]): Promise<void> {
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db)
+    for (const op of ops.slice(i, i + BATCH_LIMIT)) {
+      if (op.type === 'set') batch.set(op.ref, op.data)
+      else if (op.type === 'update') batch.update(op.ref, op.data)
+      else batch.delete(op.ref)
+    }
+    await batch.commit()
   }
-  if (error.code === '23505') throw new Error('Já existe um registro com esses dados.')
-  throw new Error(fallback)
+}
+
+async function guard<T>(fallback: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code
+    if (code === 'permission-denied' || code === 'firestore/permission-denied') {
+      throw new Error('Você não tem permissão para fazer isso.')
+    }
+    throw new Error(fallback)
+  }
+}
+
+async function idsWhere(table: TableName, field: string, values: string[]) {
+  const refs: DocumentReference[] = []
+  for (let i = 0; i < values.length; i += IN_LIMIT) {
+    const snap = await getDocs(query(collection(db, table), where(field, 'in', values.slice(i, i + IN_LIMIT))))
+    refs.push(...snap.docs.map((d) => d.ref))
+  }
+  return refs
+}
+
+async function refsWhere(table: TableName, field: string, value: string) {
+  const snap = await getDocs(query(collection(db, table), where(field, '==', value)))
+  return snap.docs.map((d) => d.ref)
+}
+
+/** Operações que apagam os dependentes e, por último, o próprio documento. */
+async function removalOps(table: TableName, id: string): Promise<WriteOp[]> {
+  const ops: WriteOp[] = []
+  const del = (refs: DocumentReference[]) => refs.forEach((ref) => ops.push({ type: 'delete', ref }))
+  const clear = (refs: DocumentReference[], field: string) =>
+    refs.forEach((ref) => ops.push({ type: 'update', ref, data: { [field]: null } }))
+
+  if (table === 'projects') {
+    const tasks = await refsWhere('tasks', 'project_id', id)
+    del(await idsWhere('task_items', 'task_id', tasks.map((t) => t.id)))
+    del(tasks)
+    del(await refsWhere('project_members', 'project_id', id))
+  } else if (table === 'tasks') {
+    del(await refsWhere('task_items', 'task_id', id))
+  } else if (table === 'people') {
+    del(await refsWhere('project_members', 'person_id', id))
+    const snap = await getDoc(doc(db, 'people', id))
+    const uid = (snap.data() as Partial<Person> | undefined)?.uid
+    if (uid) ops.push({ type: 'delete', ref: doc(db, 'members', uid) })
+    clear(await refsWhere('tasks', 'assignee_id', id), 'assignee_id')
+  } else if (table === 'sprints') {
+    clear(await refsWhere('tasks', 'sprint_id', id), 'sprint_id')
+  }
+  ops.push({ type: 'delete', ref: doc(db, table, id) })
+  return ops
 }
 
 export async function save<T extends TableName>(table: T, row: Partial<Row<T>>): Promise<Row<T>> {
   const { id, ...fields } = row as Partial<Row<T>> & { id?: string }
-  const target = supabase.from(table)
-  const query = id ? target.update(fields as never).eq('id', id) : target.insert(fields as never)
-  const { data, error } = await query.select().single()
-  fail(error, 'Não foi possível salvar. Tente de novo.')
-  return data as Row<T>
+  return guard('Não foi possível salvar. Tente de novo.', async () => {
+    if (id) {
+      const ref = doc(db, table, id)
+      await updateDoc(ref, fields as Record<string, unknown>)
+      const snap = await getDoc(ref)
+      return { ...snap.data(), id } as Row<T>
+    }
+    const data = { ...fields, created_at: new Date().toISOString() }
+    const ref = await addDoc(collection(db, table), data)
+    return { ...data, id: ref.id } as unknown as Row<T>
+  })
 }
 
 export async function remove(table: TableName, id: string): Promise<void> {
-  const { error } = await supabase.from(table).delete().eq('id', id)
-  fail(error, 'Não foi possível excluir. Tente de novo.')
+  await guard('Não foi possível excluir. Tente de novo.', async () => {
+    await runBatched(await removalOps(table, id))
+  })
 }
 
 export async function setProjectTeam(
@@ -34,28 +120,47 @@ export async function setProjectTeam(
   if (new Set(personIds).size !== personIds.length) {
     throw new Error('Há pessoas repetidas na equipe.')
   }
-  const failMsg = 'Não foi possível atualizar a equipe. Tente de novo.'
-
-  if (team.length > 0) {
-    const rows = team.map((m) => ({ project_id: projectId, ...m }))
-    const { error } = await supabase
-      .from('project_members')
-      .upsert(rows, { onConflict: 'project_id,person_id' })
-    fail(error, failMsg)
-  }
-
-  let del = supabase.from('project_members').delete().eq('project_id', projectId)
-  if (personIds.length > 0) del = del.not('person_id', 'in', `(${personIds.join(',')})`)
-  const { error } = await del
-  fail(error, failMsg)
+  await guard('Não foi possível atualizar a equipe. Tente de novo.', async () => {
+    const snap = await getDocs(query(collection(db, 'project_members'), where('project_id', '==', projectId)))
+    const existing = new Map(snap.docs.map((d) => [(d.data() as { person_id: string }).person_id, d.ref]))
+    const batch = writeBatch(db)
+    for (const [personId, ref] of existing) {
+      if (!personIds.includes(personId)) batch.delete(ref)
+    }
+    for (const m of team) {
+      const ref = existing.get(m.person_id)
+      if (ref) batch.update(ref, { role: m.role, is_lead: m.is_lead })
+      else {
+        batch.set(doc(collection(db, 'project_members')), {
+          project_id: projectId,
+          ...m,
+          created_at: new Date().toISOString(),
+        })
+      }
+    }
+    await batch.commit()
+  })
 }
 
 export async function setItemDone(itemId: string, done: boolean): Promise<void> {
-  const { error } = await supabase.rpc('set_task_item_done', { item_id: itemId, is_done: done })
-  fail(error, 'Não foi possível atualizar o item. Tente de novo.')
+  await guard('Não foi possível atualizar o item. Tente de novo.', () =>
+    updateDoc(doc(db, 'task_items', itemId), { done }),
+  )
 }
 
 export async function setTaskStatus(taskId: string, status: Task['status']): Promise<void> {
-  const { error } = await supabase.rpc('set_task_status', { task_id: taskId, new_status: status })
-  fail(error, 'Não foi possível atualizar a tarefa. Tente de novo.')
+  await guard('Não foi possível atualizar a tarefa. Tente de novo.', () =>
+    updateDoc(doc(db, 'tasks', taskId), { status }),
+  )
+}
+
+export async function setMemberAccess(person: Person, isMember: boolean): Promise<void> {
+  if (!person.uid) {
+    if (isMember) throw new Error('Informe o UID do login desta pessoa.')
+    return
+  }
+  const ref = doc(db, 'members', person.uid)
+  await guard('Não foi possível atualizar o acesso. Tente de novo.', () =>
+    isMember ? setDoc(ref, { person_id: person.id }) : deleteDoc(ref),
+  )
 }
