@@ -185,6 +185,44 @@ describe('Tarefas', () => {
     expect(h.reload).not.toHaveBeenCalled()
   })
 
+  it('se setTaskStatus falhar, o status volta e a mensagem de erro aparece', async () => {
+    h.setTaskStatus.mockRejectedValue(new Error('Não foi possível atualizar a tarefa. Tente de novo.'))
+    go('/tarefas?t=t2')
+    await userEvent.click(screen.getByRole('button', { name: /Status: A fazer/ }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Fazendo' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível atualizar a tarefa.')
+    expect(screen.getByRole('button', { name: /Status: A fazer/ })).toBeInTheDocument()
+    expect(h.reload).not.toHaveBeenCalled()
+  })
+
+  it('um erro some quando a ação seguinte dá certo, e o mais novo substitui o antigo', async () => {
+    h.setItemDone.mockRejectedValueOnce(new Error('Erro do item'))
+    h.setTaskStatus.mockRejectedValueOnce(new Error('Erro do status'))
+    go('/tarefas?t=t1')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Menu' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Erro do item')
+    // Nova falha troca a mensagem (não fica a antiga mascarando).
+    await userEvent.click(screen.getByRole('button', { name: /Status: Fazendo/ }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Feito' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Erro do status'))
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Erro do item')
+    // Ação que dá certo limpa o erro.
+    await userEvent.click(screen.getByRole('button', { name: /Status: Fazendo/ }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Feito' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
+  it('o erro de uma tarefa não aparece ao abrir outra', async () => {
+    h.setItemDone.mockRejectedValue(new Error('Erro do item'))
+    go('/tarefas?t=t1')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Menu' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+    await userEvent.click(screen.getByRole('button', { name: /Escrever testes/ }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Escrever testes')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('sem tarefas mostra "Nenhuma tarefa por aqui."', () => {
     h.data = { ...base, tasks: [], items: [], reload: h.reload } as DataState
     go('/tarefas')

@@ -45,9 +45,8 @@ export function useOpenTask(): [string | null, (id: string) => void, () => void]
  * Valores otimistas por chave: aplicados por cima dos dados do provider até a
  * chamada e o `reload` terminarem; em falha, somem e o erro fica à mostra.
  */
-function useOverrides<V>(reload: () => Promise<void>) {
+function useOverrides<V>(reload: () => Promise<void>, setError: (message: string | null) => void) {
   const [values, setValues] = useState<Record<string, V>>({})
-  const [error, setError] = useState<string | null>(null)
   const seq = useRef<Record<string, number>>({})
 
   const apply = useCallback(
@@ -70,9 +69,9 @@ function useOverrides<V>(reload: () => Promise<void>) {
         }
       }
     },
-    [reload],
+    [reload, setError],
   )
-  return { values, error, apply }
+  return { values, apply }
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -136,12 +135,19 @@ interface Props {
 }
 
 export function TaskSheet({ taskId, onClose, ownerActions }: Props) {
-  const { tasks, items, projects, people, sprints, reload } = useData()
+  const { tasks } = useData()
   const task = taskId ? tasks.find((t) => t.id === taskId) : undefined
-  const done = useOverrides<boolean>(reload)
-  const status = useOverrides<Task['status']>(reload)
   if (!task) return null
+  // A chave zera erro e valores otimistas ao trocar de tarefa.
+  return <TaskSheetBody key={task.id} task={task} onClose={onClose} ownerActions={ownerActions} />
+}
 
+function TaskSheetBody({ task, onClose, ownerActions }: { task: Task; onClose: () => void; ownerActions?: ReactNode }) {
+  const { items, projects, people, sprints, reload } = useData()
+  // Um único erro para itens e status: a ação mais recente sempre vence.
+  const [error, setError] = useState<string | null>(null)
+  const done = useOverrides<boolean>(reload, setError)
+  const status = useOverrides<Task['status']>(reload, setError)
   const project = projects.find((p) => p.id === task.project_id)
   const assignee = people.find((p) => p.id === task.assignee_id)
   const sprint = sprints.find((s) => s.id === task.sprint_id)
@@ -150,7 +156,6 @@ export function TaskSheet({ taskId, onClose, ownerActions }: Props) {
   const own = sortTasks(items.filter((i) => i.task_id === task.id))
   const ofKind = (kind: ItemKind) => own.filter((i) => i.kind === kind)
   const doneOf = (i: TaskItem) => done.values[i.id] ?? i.done
-  const error = done.error ?? status.error
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
