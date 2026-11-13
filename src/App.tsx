@@ -10,7 +10,7 @@ import Overview from '@/screens/Overview'
 import People from '@/screens/People'
 import ProjectPage from '@/screens/ProjectPage'
 import Projects from '@/screens/Projects'
-import TasksPlaceholder from '@/screens/TasksPlaceholder'
+import Tasks from '@/screens/Tasks'
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <main className="flex min-h-svh flex-col items-center justify-center gap-4 px-6">{children}</main>
@@ -41,7 +41,7 @@ function AppRoutes() {
         <Route index element={<Overview />} />
         <Route path="projetos" element={<Projects />} />
         <Route path="projetos/:id" element={<ProjectPage />} />
-        <Route path="tarefas" element={<TasksPlaceholder />} />
+        <Route path="tarefas" element={<Tasks />} />
         <Route path="pessoas" element={<People />} />
         <Route path="p/:slug" element={<CustomPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

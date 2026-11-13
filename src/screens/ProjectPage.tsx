@@ -3,11 +3,13 @@ import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading, Sections } from '@/blocks/Sections'
 import { useData } from '@/data/DataProvider'
 import { teamOf } from '@/lib/derive'
-import { ProjectTasks } from '@/screens/ProjectTasks'
+import { TaskList } from '@/tasks/TaskList'
+import { TaskSheet, useOpenTask } from '@/tasks/TaskSheet'
 
 export default function ProjectPage() {
   const { id } = useParams()
   const { projects, members, people, tasks } = useData()
+  const [openId, openTask, closeTask] = useOpenTask()
   const project = projects.find((p) => p.id === id)
 
   if (!project) {
@@ -80,7 +82,8 @@ export default function ProjectPage() {
       {own.length > 0 && (
         <section>
           <SectionHeading index={idx()}>Tarefas</SectionHeading>
-          <ProjectTasks tasks={own} people={people} />
+          <TaskList tasks={own} onOpen={openTask} showProject={false} />
+          <TaskSheet taskId={openId} onClose={closeTask} />
         </section>
       )}
     </div>
