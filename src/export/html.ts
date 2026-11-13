@@ -1,35 +1,29 @@
-import type { LeafBlock } from "@/lib/types";
-import {
-  factsOf,
-  formatDate,
-  groupTasks,
-  leadName,
-  memberRoles,
-} from "./model";
-import type { ExportDoc, ExportItem, ExportProject, ExportTask } from "./model";
+import type { LeafBlock } from '@/lib/types'
+import { factsOf, formatDate, groupTasks, leadName, memberRoles } from './model'
+import type { ExportDoc, ExportItem, ExportProject, ExportTask } from './model'
 
 export function esc(value: unknown): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 export interface HtmlOptions {
-  theme: "dark" | "print";
-  fontDataUrl: string;
+  theme: 'dark' | 'print'
+  fontDataUrl: string
 }
 
-const DARK = `--bg:#000;--surface:#0a0e0c;--raised:#111714;--fg:#f0f5f2;--muted:#a0aaa5;--border:#252d29;--accent:#9cddbd;--label:#a8cbb8;--on:#9cddbd;--half:#e6c15c;--off:#a0aaa5;--chip-bg:#f0f5f2;--chip-fg:#000;`;
-const PRINT = `--bg:#fff;--surface:#fff;--raised:#f6f8f7;--fg:#111;--muted:#555;--border:#d4dad7;--accent:#1f7a52;--label:#2f6b4f;--on:#1f7a52;--half:#8a6a00;--off:#555;--chip-bg:#111;--chip-fg:#fff;`;
+const DARK = `--bg:#000;--surface:#0a0e0c;--raised:#111714;--fg:#f0f5f2;--muted:#a0aaa5;--border:#252d29;--accent:#9cddbd;--label:#a8cbb8;--on:#9cddbd;--half:#e6c15c;--off:#a0aaa5;--chip-bg:#f0f5f2;--chip-fg:#000;`
+const PRINT = `--bg:#fff;--surface:#fff;--raised:#f6f8f7;--fg:#111;--muted:#555;--border:#d4dad7;--accent:#1f7a52;--label:#2f6b4f;--on:#1f7a52;--half:#8a6a00;--off:#555;--chip-bg:#111;--chip-fg:#fff;`
 
 function css(opts: HtmlOptions): string {
-  const font = opts.fontDataUrl.replace(/["\\\n\r]/g, "");
+  const font = opts.fontDataUrl.replace(/["\\\n\r]/g, '')
   return `
 @font-face{font-family:'Geist Variable';font-style:normal;font-weight:100 900;src:url("${font}") format('woff2')}
-:root{${opts.theme === "dark" ? DARK : PRINT}}
+:root{${opts.theme === 'dark' ? DARK : PRINT}}
 *{box-sizing:border-box}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:'Geist Variable',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.55}
@@ -79,101 +73,93 @@ footer{border-top:1px solid var(--border);padding-top:16px;color:var(--muted)}
 @page{margin:14mm}
 @media (max-width:720px){.sections{grid-template-columns:1fr}header.doc h1{font-size:30px}}
 @media print{.wrap{padding:0;max-width:none}.project{margin-bottom:32px}}
-`;
+`
 }
 
 function blockHtml(b: LeafBlock): string {
   switch (b.type) {
-    case "text":
-      return `<p>${esc(b.text)}</p>`;
-    case "callout":
-      return `<p class="callout">${esc(b.text)}</p>`;
-    case "list":
-      return b.items.length
-        ? `<ul>${b.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`
-        : "";
-    case "checklist":
+    case 'text':
+      return String(b.text ?? '').trim() ? `<p>${esc(b.text)}</p>` : ''
+    case 'callout':
+      return String(b.text ?? '').trim() ? `<p class="callout">${esc(b.text)}</p>` : ''
+    case 'list':
+      return b.items.length ? `<ul>${b.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : ''
+    case 'checklist':
       return b.items.length
         ? `<ul class="check">${b.items
             .map(
               (i) =>
-                `<li class="${i.done ? "done" : ""}"><span class="box"></span><span class="txt">${esc(i.text)}${i.note ? ` <span class="muted">${esc(i.note)}</span>` : ""}</span></li>`,
+                `<li class="${i.done ? 'done' : ''}"><span class="box"></span><span class="txt">${esc(i.text)}${i.note ? ` <span class="muted">${esc(i.note)}</span>` : ''}</span></li>`,
             )
-            .join("")}</ul>`
-        : "";
-    case "table":
+            .join('')}</ul>`
+        : ''
+    case 'table':
       return b.headers.length
-        ? `<div class="tablebox"><table><thead><tr>${b.headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${b.rows
-            .map(
-              (r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`,
-            )
-            .join("")}</tbody></table></div>`
-        : "";
-    case "decisions":
+        ? `<div class="tablebox"><table><thead><tr>${b.headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${b.rows
+            .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
+            .join('')}</tbody></table></div>`
+        : ''
+    case 'decisions':
       return b.items.length
-        ? `<ol>${b.items.map((d) => `<li><strong>${esc(d.label)}</strong> ${esc(d.text)}</li>`).join("")}</ol>`
-        : "";
+        ? `<ol>${b.items.map((d) => `<li><strong>${esc(d.label)}</strong> ${esc(d.text)}</li>`).join('')}</ol>`
+        : ''
     default:
-      return "";
+      return ''
   }
 }
 
 function itemList(label: string, items: ExportItem[]): string {
-  if (!items.length) return "";
+  if (!items.length) return ''
   return `<div class="sub"><p class="label">${label}</p><ul class="check">${items
     .map(
       (i) =>
-        `<li class="${i.done ? "done" : ""}"><span class="box"></span><span class="txt">${esc(i.text)}</span></li>`,
+        `<li class="${i.done ? 'done' : ''}"><span class="box"></span><span class="txt">${esc(i.text)}</span></li>`,
     )
-    .join("")}</ul></div>`;
+    .join('')}</ul></div>`
 }
 
 function taskHtml(t: ExportTask): string {
-  const meta = [
-    t.assignee,
-    t.sprint,
-    t.dueOn ? `até ${formatDate(t.dueOn)}` : null,
-  ]
+  const meta = [t.assignee, t.sprint, t.dueOn ? `até ${formatDate(t.dueOn)}` : null]
     .filter(Boolean)
     .map(esc)
-    .join(" · ");
-  return `<article class="card task"><h3>${esc(t.title)}</h3>${meta ? `<p class="meta">${meta}</p>` : ""}${
-    t.description ? `<p class="sub">${esc(t.description)}</p>` : ""
-  }${itemList("Escopo", t.scope)}${itemList("Testes", t.tests)}</article>`;
+    .join(' · ')
+  return `<article class="card task"><h3>${esc(t.title)}</h3>${meta ? `<p class="meta">${meta}</p>` : ''}${
+    t.description ? `<p class="sub">${esc(t.description)}</p>` : ''
+  }${itemList('Escopo', t.scope)}${itemList('Testes', t.tests)}</article>`
 }
 
 function projectHtml(p: ExportProject): string {
-  const { project } = p;
-  const parts: string[] = [];
+  const { project } = p
+  const parts: string[] = []
   parts.push(
     `<div class="row"><span class="chip mono">${esc(project.number)}</span><span class="status ${esc(project.status_level)}">${esc(project.status_label)}</span></div>`,
     `<h2>${esc(project.title)}</h2>`,
-  );
-  if (project.summary)
-    parts.push(`<p class="muted">${esc(project.summary)}</p>`);
-  const facts = factsOf(project);
+  )
+  if (project.summary) parts.push(`<p class="muted">${esc(project.summary)}</p>`)
+  const facts = factsOf(project)
   if (facts.length) {
     parts.push(
-      `<dl class="facts">${facts.map((f) => `<div><dt class="label">${esc(f.label)}</dt><dd>${esc(f.value)}</dd></div>`).join("")}</dl>`,
-    );
+      `<dl class="facts">${facts.map((f) => `<div><dt class="label">${esc(f.label)}</dt><dd>${esc(f.value)}</dd></div>`).join('')}</dl>`,
+    )
   }
   if (p.team.length) {
     parts.push(
       `<div><p class="label">Equipe</p><ul class="grid" style="list-style:none;padding:0;margin-top:10px">${p.team
         .map(
           (m) =>
-            `<li class="card"><strong>${esc(m.name)}</strong><p class="mono muted">${esc(memberRoles(m) || "—")}${m.isLead ? ' <span style="color:var(--accent)">Frente</span>' : ""}</p></li>`,
+            `<li class="card"><strong>${esc(m.name)}</strong><p class="mono muted">${esc(memberRoles(m) || '—')}${m.isLead ? ' <span style="color:var(--accent)">Frente</span>' : ''}</p></li>`,
         )
-        .join("")}</ul></div>`,
-    );
+        .join('')}</ul></div>`,
+    )
   }
   const sections = (project.sections ?? [])
-    .map(
-      (s) =>
-        `<section class="card${s.full ? " full" : ""}">${s.title ? `<h3 class="label">${esc(s.title)}</h3>` : ""}${(s.blocks ?? []).map(blockHtml).join("")}</section>`,
-    )
-    .join("");
-  if (sections) parts.push(`<div class="sections">${sections}</div>`);
+    .map((s) => {
+      const body = (s.blocks ?? []).map(blockHtml).join('')
+      if (!body) return ''
+      return `<section class="card${s.full ? ' full' : ''}">${s.title ? `<h3 class="label">${esc(s.title)}</h3>` : ''}${body}</section>`
+    })
+    .join('')
+  if (sections) parts.push(`<div class="sections">${sections}</div>`)
   if (p.tasks.length) {
     parts.push(
       `<div class="tasks"><p class="label">Tarefas · ${p.progress.done}/${p.progress.total} feitas</p>${groupTasks(
@@ -181,26 +167,26 @@ function projectHtml(p: ExportProject): string {
       )
         .map(
           (g) =>
-            `<div class="group" style="margin-top:14px"><h3>${esc(g.label)} <span class="mono muted">${g.tasks.length}</span></h3>${g.tasks.map(taskHtml).join("")}</div>`,
+            `<div class="group" style="margin-top:14px"><h3>${esc(g.label)} <span class="mono muted">${g.tasks.length}</span></h3>${g.tasks.map(taskHtml).join('')}</div>`,
         )
-        .join("")}</div>`,
-    );
+        .join('')}</div>`,
+    )
   }
-  return `<section class="project">${parts.join("")}</section>`;
+  return `<section class="project">${parts.join('')}</section>`
 }
 
 function overviewHtml(doc: ExportDoc): string {
-  if (!doc.all || !doc.projects.length) return "";
+  if (!doc.all || !doc.projects.length) return ''
   return `<div class="overview tablebox"><table><thead><tr><th>Nº</th><th>Projeto</th><th>Frente</th><th>Status</th><th>Tarefas feitas</th></tr></thead><tbody>${doc.projects
     .map(
       (p) =>
         `<tr><td class="mono">${esc(p.project.number)}</td><td>${esc(p.project.title)}</td><td>${esc(leadName(p))}</td><td>${esc(p.project.status_label)}</td><td class="mono">${p.progress.done}/${p.progress.total}</td></tr>`,
     )
-    .join("")}</tbody></table></div>`;
+    .join('')}</tbody></table></div>`
 }
 
 export function toHtml(doc: ExportDoc, opts: HtmlOptions): string {
-  const date = doc.generatedAt ? formatDate(doc.generatedAt) : "";
+  const date = doc.generatedAt ? formatDate(doc.generatedAt) : ''
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -211,12 +197,12 @@ export function toHtml(doc: ExportDoc, opts: HtmlOptions): string {
 </head>
 <body>
 <div class="wrap">
-<header class="doc"><p class="label">LASETE · Diretoria de Projetos</p><h1>${esc(doc.title)}</h1>${date ? `<p class="mono muted">Gerado em ${esc(date)}</p>` : ""}</header>
+<header class="doc"><p class="label">LASETE · Diretoria de Projetos</p><h1>${esc(doc.title)}</h1>${date ? `<p class="mono muted">Gerado em ${esc(date)}</p>` : ''}</header>
 ${overviewHtml(doc)}
-${doc.projects.map(projectHtml).join("\n")}
-<footer class="mono">LASETE${date ? ` · gerado em ${esc(date)}` : ""}</footer>
+${doc.projects.map(projectHtml).join('\n')}
+<footer class="mono">LASETE${date ? ` · gerado em ${esc(date)}` : ''}</footer>
 </div>
 </body>
 </html>
-`;
+`
 }

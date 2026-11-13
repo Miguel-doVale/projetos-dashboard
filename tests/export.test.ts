@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { downloadText, printHtml } from '@/export/download'
 import { toHtml } from '@/export/html'
 import { toMarkdown } from '@/export/markdown'
-import { buildExport, fileName } from '@/export/model'
+import { buildExport, fileName, formatDate } from '@/export/model'
 import type { ExportDoc } from '@/export/model'
 import type { Person, Project, ProjectMember, Sprint, Task, TaskItem } from '@/lib/types'
 
@@ -12,22 +12,72 @@ const FONT = 'data:font/woff2;base64,AAAA'
 const NOW = '2026-11-13T15:00:00.000Z'
 
 const person = (id: string, name: string, role: string | null = null): Person => ({
-  id, created_at: null, name, role, area: null, email: null, uid: null,
+  id,
+  created_at: null,
+  name,
+  role,
+  area: null,
+  email: null,
+  uid: null,
 })
 const project = (id: string, position: number, title: string, over: Partial<Project> = {}): Project => ({
-  id, created_at: null, position, number: String(position).padStart(2, '0'), title, kind: 'projeto',
-  status_level: 'on', status_label: 'Em andamento', summary: null, deadline: null, facts: [], sections: [], ...over,
+  id,
+  created_at: null,
+  position,
+  number: String(position).padStart(2, '0'),
+  title,
+  kind: 'projeto',
+  status_level: 'on',
+  status_label: 'Em andamento',
+  summary: null,
+  deadline: null,
+  facts: [],
+  sections: [],
+  ...over,
 })
 const member = (id: string, project_id: string, person_id: string, is_lead = false): ProjectMember => ({
-  id, created_at: null, project_id, person_id, role: 'Dev', is_lead,
+  id,
+  created_at: null,
+  project_id,
+  person_id,
+  role: 'Dev',
+  is_lead,
 })
 const sprint = (id: string, name: string): Sprint => ({ id, created_at: null, name, starts_on: null, ends_on: null })
-const task = (id: string, project_id: string, title: string, status: Task['status'], over: Partial<Task> = {}): Task => ({
-  id, created_at: null, project_id, title, description: null, status, assignee_id: null, sprint_id: null,
-  due_on: null, position: 1, ...over,
+const task = (
+  id: string,
+  project_id: string,
+  title: string,
+  status: Task['status'],
+  over: Partial<Task> = {},
+): Task => ({
+  id,
+  created_at: null,
+  project_id,
+  title,
+  description: null,
+  status,
+  assignee_id: null,
+  sprint_id: null,
+  due_on: null,
+  position: 1,
+  ...over,
 })
-const item = (id: string, task_id: string, kind: TaskItem['kind'], text: string, done: boolean, position = 1): TaskItem => ({
-  id, created_at: null, task_id, kind, text, done, position,
+const item = (
+  id: string,
+  task_id: string,
+  kind: TaskItem['kind'],
+  text: string,
+  done: boolean,
+  position = 1,
+): TaskItem => ({
+  id,
+  created_at: null,
+  task_id,
+  kind,
+  text,
+  done,
+  position,
 })
 
 const data = {
@@ -39,14 +89,17 @@ const data = {
       deadline: '2026-12-01',
       facts: [{ label: 'Área', value: 'Hardware' }],
       sections: [
-        { title: 'Dados', blocks: [
-          { type: 'table', headers: ['A|B', 'C'], rows: [['x|y', 'linha1\nlinha2']] },
-          { type: 'decisions', items: [{ label: 'Pilha', text: 'Li-ion' }] },
-          { type: 'list', items: ['um\ndois'] },
-          { type: 'checklist', items: [{ text: 'feito', done: true }, { text: 'falta' }] },
-          { type: 'callout', text: 'Atenção' },
-          { type: 'text', text: 'Texto' },
-        ] },
+        {
+          title: 'Dados',
+          blocks: [
+            { type: 'table', headers: ['A|B', 'C'], rows: [['x|y', 'linha1\nlinha2']] },
+            { type: 'decisions', items: [{ label: 'Pilha', text: 'Li-ion' }] },
+            { type: 'list', items: ['um\ndois'] },
+            { type: 'checklist', items: [{ text: 'feito', done: true }, { text: 'falta' }] },
+            { type: 'callout', text: 'Atenção' },
+            { type: 'text', text: 'Texto' },
+          ],
+        },
       ],
     }),
   ],
@@ -64,10 +117,11 @@ const data = {
   ],
 }
 
-const doc = (projectId?: string) => ({ ...structuredClone(buildExport(data, projectId)), generatedAt: NOW })
+const doc = (projectId?: string) => ({ ...structuredClone(buildExport(data, projectId, NOW)) })
 const dark = (d: ExportDoc) => toHtml(d, { theme: 'dark', fontDataUrl: FONT })
 const emptyDoc = (): ExportDoc => ({
-  title: 'Vazio', generatedAt: NOW,
+  title: 'Vazio',
+  generatedAt: NOW,
   projects: [{ project: project('e', 1, 'Vazio'), team: [], tasks: [], progress: { done: 0, total: 0 } }],
 })
 
@@ -189,8 +243,11 @@ describe('downloadText', () => {
       expect(this.download).toBe('a.md')
       expect(this.href).toBe('blob:x')
     })
+    vi.useFakeTimers()
     downloadText('a.md', 'text/markdown', '# oi')
     expect(click).toHaveBeenCalledOnce()
+    expect(revoke).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1500)
     expect(revoke).toHaveBeenCalledWith('blob:x')
     expect(document.querySelector('a')).toBeNull()
   })
@@ -228,5 +285,214 @@ describe('printHtml', () => {
     expect(win.print).toHaveBeenCalledOnce()
     vi.advanceTimersByTime(61_000)
     expect(document.querySelector('iframe')).toBeNull()
+  })
+})
+
+describe('datas no fuso local', () => {
+  const late = '2026-11-14T01:30:00.000Z' // 22:30 de 13/11 em São Paulo
+
+  it('formatDate e fileName usam o dia local do horário, não o dia UTC', () => {
+    expect(formatDate(late, 180)).toBe('13/11/2026')
+    expect(formatDate(late, 0)).toBe('14/11/2026')
+    expect(fileName({ ...doc(), generatedAt: late }, 'md', 180)).toBe('LASETE_Projetos_2026-11-13.md')
+  })
+
+  it('data sem hora (due_on) não é deslocada', () => {
+    expect(formatDate('2026-11-14', 180)).toBe('14/11/2026')
+    expect(formatDate('texto livre')).toBe('texto livre')
+  })
+
+  it('segue o TZ do processo quando não há deslocamento explícito', () => {
+    const old = process.env.TZ
+    process.env.TZ = 'America/Sao_Paulo'
+    try {
+      expect(formatDate(late)).toBe('13/11/2026')
+      expect(toMarkdown({ ...doc(), generatedAt: late })).toContain('Gerado em 13/11/2026')
+    } finally {
+      if (old === undefined) delete process.env.TZ
+      else process.env.TZ = old
+    }
+  })
+})
+
+describe('Markdown com texto hostil', () => {
+  const hostile = '# Título\n- item\n1. um\n> cit\n---\n```\n===\n**negrito** _it_ [l](u) <b>'
+  const docWith = (blocks: Project['sections'][number]['blocks']): ExportDoc => {
+    const d = emptyDoc()
+    d.projects[0].project.sections = [{ title: 'S', blocks }]
+    return d
+  }
+
+  it('texto: cada linha escapada no seu lugar', () => {
+    const lines = toMarkdown(docWith([{ type: 'text', text: hostile }])).split('\n')
+    for (const l of ['\\# Título', '\\- item', '1\\. um', '\\> cit', '\\---', '\\`\\`\\`', '\\===']) {
+      expect(lines).toContain(l)
+    }
+    expect(lines).toContain('\\*\\*negrito\\*\\* \\_it\\_ \\[l\\](u) \\<b\\>')
+  })
+
+  it('callout, lista, checklist, tabela e decisões não criam estrutura', () => {
+    const md = toMarkdown(
+      docWith([
+        { type: 'callout', text: '# a\n\n- b' },
+        { type: 'list', items: ['- x', '1. y', '# z'] },
+        { type: 'checklist', items: [{ text: '- c', note: '**n**' }] },
+        { type: 'table', headers: ['**h**'], rows: [['a|b\n`c`']] },
+        { type: 'decisions', items: [{ label: '**L**', text: '- t' }] },
+      ]),
+    )
+    expect(md).toContain('> \\# a\n>\n> \\- b')
+    expect(md).toContain('- \\- x\n- 1\\. y\n- \\# z')
+    expect(md).toContain('- [ ] \\- c (\\*\\*n\\*\\*)')
+    expect(md).toContain('| \\*\\*h\\*\\* |')
+    expect(md).toContain('| a\\|b \\`c\\` |')
+    expect(md).toContain('1. **\\*\\*L\\*\\*** - t')
+  })
+
+  it('resumo, fatos, título e equipe', () => {
+    const d = emptyDoc()
+    const p = d.projects[0]
+    p.project.title = '# T *x*'
+    p.project.summary = '# S\n- s'
+    p.project.facts = [{ label: '**f**', value: '`v`' }]
+    p.team = [{ name: '- Nome', leagueRole: '[r]', projectRole: null, isLead: true }]
+    const md = toMarkdown(d)
+    expect(md).toContain('# 01 · # T \\*x\\*')
+    expect(md).toContain('\\# S\n\\- s')
+    expect(md).toContain('- **\\*\\*f\\*\\*:** \\`v\\`')
+    expect(md).toContain('- \\- Nome — \\[r\\] (frente)')
+  })
+
+  it('descrição de tarefa é parágrafo indentado separado do título, mantendo as linhas', () => {
+    const d = emptyDoc()
+    d.projects[0].tasks = [
+      {
+        title: '# T',
+        description: '- a\n1. b\n\nfim',
+        status: 'todo',
+        statusLabel: 'A fazer',
+        assignee: null,
+        sprint: null,
+        dueOn: null,
+        scope: [{ text: '- e', done: false }],
+        tests: [],
+      },
+    ]
+    d.projects[0].progress = { done: 0, total: 1 }
+    const md = toMarkdown(d)
+    expect(md).toContain('- [ ] \\# T\n\n  \\- a\n  1\\. b\n\n  fim\n\n  - Escopo\n    - [ ] \\- e')
+  })
+
+  it('lista seguida de checklist não se funde', () => {
+    const md = toMarkdown(
+      docWith([
+        { type: 'list', items: ['a'] },
+        { type: 'checklist', items: [{ text: 'b' }] },
+      ]),
+    )
+    expect(md).toContain('- a\n\n<!-- -->\n\n- [ ] b')
+  })
+
+  it('seção com título e sem corpo some; texto vazio some; null não quebra', () => {
+    const md = toMarkdown(
+      docWith([
+        { type: 'text', text: '  ' },
+        { type: 'list', items: [] },
+        { type: 'text', text: null as never },
+      ]),
+    )
+    expect(md).not.toContain('## S')
+    const d = emptyDoc()
+    d.projects[0].project.title = null as never
+    d.projects[0].project.sections = [
+      {
+        title: 'S',
+        blocks: [{ type: 'table', headers: [null as never, 3 as never], rows: [[undefined as never, 4 as never]] }],
+      },
+    ]
+    expect(() => toMarkdown(d)).not.toThrow()
+    expect(toMarkdown(d)).toContain('|  | 3 |')
+  })
+})
+
+describe('HTML com texto hostil e dados órfãos', () => {
+  const P = '<img src=x onerror=alert(1)> "q" \'q\''
+  const E = '&lt;img src=x onerror=alert(1)&gt; &quot;q&quot; &#39;q&#39;'
+
+  it('nenhum campo nem bloco sai sem escape', () => {
+    const t = (over: object = {}) => ({
+      title: P,
+      description: P,
+      status: 'todo' as const,
+      statusLabel: P,
+      assignee: P,
+      sprint: P,
+      dueOn: P,
+      scope: [{ text: P, done: false }],
+      tests: [{ text: P, done: true }],
+      ...over,
+    })
+    const d: ExportDoc = {
+      title: P,
+      generatedAt: NOW,
+      all: true,
+      projects: [
+        {
+          project: project('h', 1, P, {
+            number: P,
+            status_label: P,
+            status_level: P as never,
+            summary: P,
+            deadline: P,
+            facts: [{ label: P, value: P }],
+            sections: [
+              {
+                title: P,
+                blocks: [
+                  { type: 'text', text: P },
+                  { type: 'callout', text: P },
+                  { type: 'list', items: [P] },
+                  { type: 'checklist', items: [{ text: P, note: P, done: true }] },
+                  { type: 'table', headers: [P], rows: [[P]] },
+                  { type: 'decisions', items: [{ label: P, text: P }] },
+                ],
+              },
+            ],
+          }),
+          team: [{ name: P, leagueRole: P, projectRole: P, isLead: true }],
+          tasks: [t(), t({ status: 'doing' }), t({ status: 'done' })],
+          progress: { done: 1, total: 3 },
+        },
+      ],
+    }
+    for (const theme of ['dark', 'print'] as const) {
+      const html = toHtml(d, { theme, fontDataUrl: FONT })
+      expect(html.split(E).length - 1).toBeGreaterThan(30)
+      const rest = html.split(E).join('')
+      expect(rest).not.toContain('<img')
+      expect(rest).not.toContain('onerror')
+      expect(rest).not.toContain('alert(1)')
+    }
+  })
+
+  it('membro, responsável e sprint órfãos não quebram', () => {
+    const orphan = {
+      ...data,
+      members: [...data.members, member('mx', 'p1', 'fantasma')],
+      tasks: [...data.tasks, task('tx', 'p1', 'Órfã', 'todo', { assignee_id: 'fantasma', sprint_id: 'sumiu' })],
+    }
+    const d = buildExport(orphan, 'p1', NOW)
+    expect(d.projects[0].team.map((m) => m.name)).toEqual(['Ana Souza', 'Beto Lima'])
+    const o = d.projects[0].tasks.find((x) => x.title === 'Órfã')!
+    expect(o.assignee).toBeNull()
+    expect(o.sprint).toBeNull()
+    expect(toMarkdown(d)).toContain('- [ ] Órfã\n')
+    expect(dark(d)).toContain('Órfã')
+  })
+
+  it('seção com título e sem corpo e texto vazio não geram HTML', () => {
+    const d = emptyDoc()
+    d.projects[0].project.sections = [{ title: 'Fantasma', blocks: [{ type: 'text', text: '' }] }]
+    expect(dark(d)).not.toContain('Fantasma')
   })
 })
