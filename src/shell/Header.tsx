@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink } from 'react-router'
+import { Link, NavLink, useNavigate } from 'react-router'
+import { PageForm } from '@/edit/PageForm'
 import { useAuth } from '@/auth/AuthProvider'
 import { useData } from '@/data/DataProvider'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,9 @@ const BASE_LINKS = [
 ]
 
 export function Header() {
-  const { email, signOut } = useAuth()
+  const { email, access, signOut } = useAuth()
+  const navigate = useNavigate()
+  const [newPage, setNewPage] = useState(false)
   const { pages } = useData()
   const [scrolled, setScrolled] = useState(false)
 
@@ -50,11 +53,17 @@ export function Header() {
         </nav>
         <div className="flex items-center gap-3">
           {email && <span className="hidden font-mono text-xs text-muted lg:inline">{email}</span>}
+          {access === 'owner' && (
+            <Button variant="outline" size="sm" onClick={() => setNewPage(true)}>
+              Nova aba
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => void signOut()}>
             Sair
           </Button>
         </div>
       </div>
+      {newPage && <PageForm onClose={() => setNewPage(false)} onSaved={(slug) => navigate(`/p/${slug}`)} />}
     </header>
   )
 }

@@ -1,4 +1,8 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { useAuth } from '@/auth/AuthProvider'
+import { SprintManager } from '@/edit/SprintManager'
+import { TaskForm, TaskOwnerActions } from '@/edit/TaskForm'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useData } from '@/data/DataProvider'
@@ -42,6 +46,9 @@ export default function Tasks() {
   const { tasks, projects, sprints, people } = useData()
   const [params, setParams] = useSearchParams()
   const [openId, openTask, closeTask] = useOpenTask()
+  const owner = useAuth().access === 'owner'
+  const [newTask, setNewTask] = useState(false)
+  const [sprintsOpen, setSprintsOpen] = useState(false)
   const board = params.get('v') === 'quadro'
   const filter = filterFromSearch(params)
   const visible = filterTasks(tasks, filter)
@@ -68,7 +75,17 @@ export default function Tasks() {
   return (
     <div className="space-y-8">
       <header className="space-y-5">
-        <h1 className="text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">Tarefas</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">Tarefas</h1>
+          {owner && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setSprintsOpen(true)}>
+                Sprints
+              </Button>
+              <Button onClick={() => setNewTask(true)}>Nova tarefa</Button>
+            </div>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div role="group" aria-label="Visão" className="flex rounded-lg border border-border p-0.5">
             <Button variant={board ? 'ghost' : 'secondary'} size="sm" aria-pressed={!board} onClick={() => setView(false)}>
@@ -122,7 +139,13 @@ export default function Tasks() {
         <TaskList tasks={visible} onOpen={openTask} />
       )}
 
-      <TaskSheet taskId={openId} onClose={closeTask} />
+      <TaskSheet
+        taskId={openId}
+        onClose={closeTask}
+        ownerActions={owner && openId ? <TaskOwnerActions taskId={openId} onClose={closeTask} /> : undefined}
+      />
+      {newTask && <TaskForm defaultProjectId={filter.project} onClose={() => setNewTask(false)} />}
+      {sprintsOpen && <SprintManager onClose={() => setSprintsOpen(false)} />}
     </div>
   )
 }

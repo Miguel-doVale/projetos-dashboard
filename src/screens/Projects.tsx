@@ -1,4 +1,8 @@
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { useAuth } from '@/auth/AuthProvider'
+import { Button } from '@/components/ui/button'
+import { ProjectForm } from '@/edit/ProjectForm'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading } from '@/blocks/Sections'
 import { useData } from '@/data/DataProvider'
@@ -51,14 +55,21 @@ function ProjectCard({ project }: { project: Project }) {
 
 export default function Projects() {
   const { projects } = useData()
+  const owner = useAuth().access === 'owner'
+  const navigate = useNavigate()
+  const [creating, setCreating] = useState(false)
   return (
     <>
-      <SectionHeading index="01">Projetos</SectionHeading>
+      <div className="flex items-start justify-between gap-4">
+        <SectionHeading index="01">Projetos</SectionHeading>
+        {owner && <Button onClick={() => setCreating(true)}>Novo projeto</Button>}
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p) => (
           <ProjectCard key={p.id} project={p} />
         ))}
       </div>
+      {creating && <ProjectForm onClose={() => setCreating(false)} onSaved={(id) => navigate(`/projetos/${id}`)} />}
     </>
   )
 }

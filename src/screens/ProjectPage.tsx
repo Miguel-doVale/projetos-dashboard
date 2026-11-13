@@ -1,4 +1,10 @@
-import { Link, useParams } from 'react-router'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { useAuth } from '@/auth/AuthProvider'
+import { Button } from '@/components/ui/button'
+import { ConfirmDelete } from '@/edit/ConfirmDelete'
+import { ProjectForm } from '@/edit/ProjectForm'
+import { TaskForm, TaskOwnerActions } from '@/edit/TaskForm'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading, Sections } from '@/blocks/Sections'
 import { useData } from '@/data/DataProvider'
@@ -10,6 +16,10 @@ export default function ProjectPage() {
   const { id } = useParams()
   const { projects, members, people, tasks } = useData()
   const [openId, openTask, closeTask] = useOpenTask()
+  const owner = useAuth().access === 'owner'
+  const navigate = useNavigate()
+  const [editing, setEditing] = useState(false)
+  const [newTask, setNewTask] = useState(false)
   const project = projects.find((p) => p.id === id)
 
   if (!project) {
@@ -43,6 +53,24 @@ export default function ProjectPage() {
           {project.title}
         </h1>
         {project.summary && <p className="max-w-2xl text-base leading-relaxed text-muted">{project.summary}</p>}
+        {owner && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              Editar projeto
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setNewTask(true)}>
+              Nova tarefa
+            </Button>
+            <ConfirmDelete
+              table="projects"
+              id={project.id}
+              name={project.title}
+              consequence="As tarefas e a equipe deste projeto também serão apagadas."
+              label="Excluir projeto"
+              onDeleted={() => navigate('/projetos')}
+            />
+          </div>
+        )}
         {facts.length > 0 && (
           <dl className="flex flex-wrap gap-x-10 gap-y-3 pt-2">
             {facts.map((f, i) => (
@@ -83,9 +111,15 @@ export default function ProjectPage() {
         <section>
           <SectionHeading index={idx()}>Tarefas</SectionHeading>
           <TaskList tasks={own} onOpen={openTask} showProject={false} />
-          <TaskSheet taskId={openId} onClose={closeTask} />
+          <TaskSheet
+            taskId={openId}
+            onClose={closeTask}
+            ownerActions={owner && openId ? <TaskOwnerActions taskId={openId} onClose={closeTask} /> : undefined}
+          />
         </section>
       )}
+      {editing && <ProjectForm project={project} onClose={() => setEditing(false)} />}
+      {newTask && <TaskForm defaultProjectId={project.id} onClose={() => setNewTask(false)} />}
     </div>
   )
 }
