@@ -23,6 +23,7 @@
   --border: #252d29;
   --accent: #9cddbd;
   --label: #a8cbb8;
+  --hover: #1a1f1c;
 
   /* Variáveis do shadcn mapeadas para os tokens acima. */
   --card: var(--surface);
@@ -56,6 +57,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-label: var(--label);
+  --color-hover: var(--hover);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
