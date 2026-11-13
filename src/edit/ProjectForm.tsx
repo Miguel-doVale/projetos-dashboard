@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -41,6 +41,9 @@ export function ProjectForm({ project, onClose, onSaved }: Props) {
   )
   const [sections, setSections] = useState(() => toDrafts(project?.sections ?? []))
 
+  // Projeto novo já gravado: a nova tentativa atualiza em vez de inserir de novo.
+  const savedId = useRef<string | null>(null)
+
   const patchFact = (i: number, p: Partial<Fact>) => setFacts(facts.map((f, j) => (j === i ? { ...f, ...p } : f)))
 
   async function submit() {
@@ -48,8 +51,9 @@ export function ProjectForm({ project, onClose, onSaved }: Props) {
     if (!number.trim()) throw new Error('Informe o número.')
     if (team.some((r) => !r.person_id)) throw new Error('Escolha a pessoa em cada linha da equipe.')
 
+    const existingId = project?.id ?? savedId.current
     const saved = await save('projects', {
-      ...(project ? { id: project.id } : { position: nextPosition(projects) }),
+      ...(existingId ? { id: existingId } : { position: nextPosition(projects) }),
       number: number.trim(),
       title: title.trim(),
       kind,
@@ -62,7 +66,8 @@ export function ProjectForm({ project, onClose, onSaved }: Props) {
         .filter((f) => f.label || f.value),
       sections: fromDrafts(sections),
     })
-    const id = project?.id ?? saved.id
+    const id = existingId ?? saved.id
+    savedId.current = id
     await setProjectTeam(
       id,
       team.map((r) => ({ person_id: r.person_id, role: orNull(r.role), is_lead: r.is_lead })),

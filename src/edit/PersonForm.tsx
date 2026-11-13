@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { useData } from '@/data/DataProvider'
@@ -23,6 +23,8 @@ export function PersonForm({ person, onClose }: Props) {
   const [email, setEmail] = useState(person?.email ?? '')
   const [uid, setUid] = useState(person?.uid ?? '')
   const [member, setMember] = useState(wasMember)
+  // Pessoa nova já gravada: a nova tentativa atualiza em vez de inserir de novo.
+  const savedId = useRef<string | null>(null)
 
   async function submit() {
     if (!name.trim()) throw new Error('Informe o nome.')
@@ -36,8 +38,11 @@ export function PersonForm({ person, onClose }: Props) {
       email: orNull(email),
       uid: nextUid,
     }
-    const saved = await save('people', person ? { id: person.id, ...fields } : fields)
-    const target: Person = { created_at: person?.created_at ?? null, ...fields, id: person?.id ?? saved.id }
+    const existingId = person?.id ?? savedId.current
+    const saved = await save('people', existingId ? { id: existingId, ...fields } : fields)
+    const id = existingId ?? saved.id
+    savedId.current = id
+    const target: Person = { created_at: person?.created_at ?? null, ...fields, id }
     const changed = member !== wasMember || nextUid !== (person?.uid ?? null)
     if (changed) {
       // O UID mudou: o acesso do UID antigo é retirado antes de conceder o novo.

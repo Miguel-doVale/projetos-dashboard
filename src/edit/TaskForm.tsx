@@ -63,7 +63,8 @@ export function TaskForm({ task, defaultProjectId, onClose }: Props) {
       savedTaskId.current = id
     }
 
-    const kept = new Set([...scope, ...tests].map((r) => r.id).filter(Boolean))
+    // Item existente com o texto apagado sai do banco.
+    const kept = new Set([...scope, ...tests].filter((r) => r.text.trim()).map((r) => r.id))
     for (const item of own) {
       if (!kept.has(item.id) && !deleted.current.has(item.id)) {
         await remove('task_items', item.id)

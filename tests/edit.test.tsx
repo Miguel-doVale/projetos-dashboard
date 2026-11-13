@@ -2,10 +2,11 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
+import { fromDrafts, toDrafts } from '@/edit/SectionsEditor'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import type { DataState } from '@/data/DataProvider'
-import type { Page, Person, Project, Task, TaskItem } from '@/lib/types'
+import type { Page, Person, Project, Section, Task, TaskItem } from '@/lib/types'
 
 const h = vi.hoisted(() => ({
   data: null as unknown,
@@ -103,6 +104,31 @@ describe('quem vê os controles', () => {
   })
 })
 
+describe('membro em telas com conteúdo', () => {
+  const controls = /novo|nova|editar|excluir|sprints/i
+  const asMember = (over: Partial<DataState> = {}) => {
+    h.access = 'member'
+    h.data = {
+      ...base,
+      reload: h.reload,
+      members: [{ id: 'm1', created_at: null, project_id: 'p1', person_id: 'a', role: null, is_lead: true }],
+      items: [{ id: 'i1', created_at: null, task_id: 't1', kind: 'scope', text: 'Logo', done: false, position: 0 }],
+      ...over,
+    } as DataState
+  }
+  it.each([
+    ['página de projeto', '/projetos/p1', 'Portal'],
+    ['aba própria', '/p/plano', 'Plano'],
+    ['pessoas', '/pessoas', 'Ana Souza'],
+    ['painel da tarefa', '/tarefas?t=t1', 'Logo'],
+  ])('%s não mostra controles de edição', async (_n, path, text) => {
+    asMember()
+    go(path)
+    expect((await screen.findAllByText(text)).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: controls })).not.toBeInTheDocument()
+  })
+})
+
 describe('projeto', () => {
   it('sem título mostra o erro e não salva', async () => {
     const u = user()
@@ -153,7 +179,7 @@ describe('projeto', () => {
     )
   })
 
-  it('seções: monta bloco pelo texto e reordena', async () => {
+  it('seções: monta bloco pelo texto, reordena e descarta o que ficou vazio', async () => {
     const u = user()
     go('/projetos')
     await u.click(await screen.findByRole('button', { name: 'Novo projeto' }))
@@ -163,13 +189,60 @@ describe('projeto', () => {
     await u.selectOptions(screen.getByLabelText('Tipo do bloco 1 da seção 1'), 'list')
     await u.type(screen.getByLabelText('Conteúdo do bloco 1 da seção 1'), 'um{Enter}dois')
     await u.click(screen.getByRole('button', { name: 'Adicionar seção' }))
+    await u.type(screen.getAllByLabelText('Título da seção')[1], 'Notas')
+    await u.type(screen.getByLabelText('Conteúdo do bloco 1 da seção 2'), 'texto')
+    await u.click(screen.getByRole('button', { name: 'Adicionar seção' }))
     await u.click(screen.getByRole('button', { name: 'Subir seção 2' }))
     await u.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(h.save).toHaveBeenCalled())
-    // A segunda seção sobe para o topo; a do Escopo mantém o seu conteúdo.
     const sections = h.save.mock.calls[0][1].sections
-    expect(sections).toContainEqual({ title: 'Escopo', blocks: [{ type: 'list', items: ['um', 'dois'] }] })
+    expect(sections).toEqual([
+      { title: 'Notas', blocks: [{ type: 'text', text: 'texto' }] },
+      { title: 'Escopo', blocks: [{ type: 'list', items: ['um', 'dois'] }] },
+    ])
     expect(hasUndefined(sections)).toBe(false)
+  })
+
+  it('abrir e salvar sem mexer não reescreve as seções', async () => {
+    const u = user()
+    const sections: Section[] = [
+      {
+        title: 'Misto',
+        full: true,
+        blocks: [
+          { type: 'checklist', items: [{ text: 'a -- b', done: false }, { text: '[x] literal' }] },
+          { type: 'table', headers: ['A'], rows: [['x|y'], ['']] },
+          { type: 'decisions', items: [{ label: 'Prazo: v2', text: 'ok' }] },
+          { type: 'nova' } as never,
+        ],
+      },
+    ]
+    h.data = { ...base, reload: h.reload, projects: [{ ...project('p1', 1, 'Portal'), sections }, project('p2', 4, 'Gadget')] } as DataState
+    go('/projetos/p1')
+    await u.click(await screen.findByRole('button', { name: 'Editar projeto' }))
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.save).toHaveBeenCalled())
+    expect(h.save.mock.calls[0][1].sections).toEqual(sections)
+  })
+
+  it('bloco intocado volta idêntico, inclusive com done:false explícito', () => {
+    const sections: Section[] = [{ blocks: [{ type: 'checklist', items: [{ text: 'a', done: false }] }] }]
+    expect(fromDrafts(toDrafts(sections))).toEqual(sections)
+  })
+
+  it('nova tentativa depois de falha na equipe atualiza o projeto, sem inserir outro', async () => {
+    const u = user()
+    h.setProjectTeam.mockRejectedValueOnce(new Error('Falhou a equipe.'))
+    go('/projetos')
+    await u.click(await screen.findByRole('button', { name: 'Novo projeto' }))
+    await u.type(screen.getByLabelText('Título'), 'Repetido')
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Falhou a equipe.')).toBeInTheDocument()
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.setProjectTeam).toHaveBeenCalledTimes(2))
+    expect(h.save).toHaveBeenCalledTimes(2)
+    expect(h.save.mock.calls[0][1].id).toBeUndefined()
+    expect(h.save.mock.calls[1][1].id).toBe('novo')
   })
 
   it('erro do save aparece e o formulário continua com os dados', async () => {
@@ -225,6 +298,26 @@ describe('tarefa', () => {
     ])
   })
 
+  it('apagar o texto de um item existente remove o item', async () => {
+    const u = user()
+    h.data = {
+      ...base,
+      reload: h.reload,
+      items: [
+        { id: 'i1', created_at: null, task_id: 't1', kind: 'scope', text: 'Logo', done: false, position: 0 },
+        { id: 'i2', created_at: null, task_id: 't1', kind: 'scope', text: 'Menu', done: false, position: 1 },
+      ],
+    } as DataState
+    go('/tarefas?t=t1')
+    await u.click(await screen.findByRole('button', { name: 'Editar tarefa' }))
+    await u.clear(screen.getByLabelText('Escopo: item 1'))
+    await u.type(screen.getByLabelText('Escopo: item 2'), ' 2')
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.remove).toHaveBeenCalledWith('task_items', 'i1'))
+    expect(h.remove).toHaveBeenCalledTimes(1)
+    expect(h.save).toHaveBeenCalledWith('task_items', { id: 'i2', text: 'Menu 2' })
+  })
+
   it('campos opcionais em branco vão como null', async () => {
     const u = user()
     go('/tarefas')
@@ -273,6 +366,76 @@ describe('pessoa', () => {
     await waitFor(() => expect(h.setMemberAccess).toHaveBeenCalled())
     expect(h.setMemberAccess.mock.calls[0][0]).toMatchObject({ id: 'novo', uid: 'uid-9' })
     expect(h.setMemberAccess.mock.calls[0][1]).toBe(true)
+  })
+})
+
+describe('pessoa: acesso', () => {
+  const member = person('a', 'Ana Souza', { uid: 'uid-velho' })
+  const withMember = () => {
+    h.data = { ...base, reload: h.reload, people: [member, person('b', 'Beto Lima')], memberUids: ['uid-velho'] } as DataState
+  }
+
+  it('trocar o UID de um membro retira o acesso do antigo antes de dar o novo', async () => {
+    const u = user()
+    withMember()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Editar Ana Souza' }))
+    expect(screen.getByRole('checkbox', { name: 'Pode entrar no dashboard (membro)' })).toBeChecked()
+    await u.clear(screen.getByLabelText('UID do login'))
+    await u.type(screen.getByLabelText('UID do login'), 'uid-novo')
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.setMemberAccess).toHaveBeenCalledTimes(2))
+    const [first, second] = h.setMemberAccess.mock.calls
+    expect(first).toEqual([member, false])
+    expect(second[0]).toMatchObject({ id: 'a', uid: 'uid-novo' })
+    expect(second[1]).toBe(true)
+    expect(h.setMemberAccess.mock.invocationCallOrder[0]).toBeLessThan(h.setMemberAccess.mock.invocationCallOrder[1])
+  })
+
+  it('desmarcar a caixa retira o acesso', async () => {
+    const u = user()
+    withMember()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Editar Ana Souza' }))
+    await u.click(screen.getByRole('checkbox', { name: 'Pode entrar no dashboard (membro)' }))
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.setMemberAccess).toHaveBeenCalledTimes(1))
+    expect(h.setMemberAccess.mock.calls[0][0]).toMatchObject({ id: 'a', uid: 'uid-velho' })
+    expect(h.setMemberAccess.mock.calls[0][1]).toBe(false)
+  })
+
+  it('nova tentativa depois de setMemberAccess falhar não cria a pessoa duas vezes', async () => {
+    const u = user()
+    h.setMemberAccess.mockRejectedValueOnce(new Error('Sem permissão.'))
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Nova pessoa' }))
+    await u.type(screen.getByLabelText('Nome'), 'Carla')
+    await u.type(screen.getByLabelText('UID do login'), 'uid-9')
+    await u.click(screen.getByRole('checkbox', { name: 'Pode entrar no dashboard (membro)' }))
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Sem permissão.')).toBeInTheDocument()
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.setMemberAccess).toHaveBeenCalledTimes(2))
+    expect(h.save).toHaveBeenCalledTimes(2)
+    expect(h.save.mock.calls[0][1].id).toBeUndefined()
+    expect(h.save.mock.calls[1][1].id).toBe('novo')
+    expect(h.setMemberAccess.mock.calls[1][0]).toMatchObject({ id: 'novo', uid: 'uid-9' })
+  })
+})
+
+describe('formulário durante o envio', () => {
+  it('Escape não fecha enquanto salva', async () => {
+    const u = user()
+    let release: () => void = () => {}
+    h.save.mockImplementationOnce(() => new Promise((res) => { release = () => res({ id: 'novo' }) }))
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Nova pessoa' }))
+    await u.type(screen.getByLabelText('Nome'), 'Carla')
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await u.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    release()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
 

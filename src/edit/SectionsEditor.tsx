@@ -3,7 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, NativeSelect } from '@/edit/fields'
-import { BLOCK_TYPE_HINT, BLOCK_TYPE_LABEL, blockToText, textToBlock } from '@/edit/sectionsText'
+import { BLOCK_TYPE_HINT, BLOCK_TYPE_LABEL, blockToText, isEmptyBlock, textToBlock } from '@/edit/sectionsText'
 import type { LeafBlock, Section } from '@/lib/types'
 
 type BlockType = LeafBlock['type']
@@ -15,6 +15,8 @@ export interface BlockDraft {
   text: string
   /** Bloco de tipo desconhecido: preservado sem edição. */
   raw?: LeafBlock
+  /** Bloco original; reaproveitado se o texto não for mexido. */
+  orig?: LeafBlock
 }
 export interface SectionDraft {
   key: number
@@ -33,16 +35,24 @@ export function toDrafts(sections: Section[]): SectionDraft[] {
     title: s.title ?? '',
     full: s.full === true,
     blocks: s.blocks.map((b) =>
-      known(b.type) ? { key: nextKey(), type: b.type, text: blockToText(b) } : { key: nextKey(), type: 'text', text: '', raw: b },
+      known(b.type) ? { key: nextKey(), type: b.type, text: blockToText(b), orig: b } : { key: nextKey(), type: 'text', text: '', raw: b },
     ),
   }))
 }
 
-/** Seções prontas para salvar: sem chaves `undefined`, sem seções vazias. */
+const parse = (b: BlockDraft): LeafBlock =>
+  b.raw ?? (b.orig && b.orig.type === b.type && b.text === blockToText(b.orig) ? b.orig : textToBlock(b.type, b.text))
+
+/** Seções prontas para salvar: blocos intocados voltam como estavam; vazios e seções sem nada saem. */
 export function fromDrafts(drafts: SectionDraft[]): Section[] {
   return drafts
     .map((d): Section => {
-      const out: Section = { blocks: d.blocks.map((b) => b.raw ?? textToBlock(b.type, b.text)) }
+      const out: Section = {
+        blocks: d.blocks.flatMap((b) => {
+          const block = parse(b)
+          return b.raw || !isEmptyBlock(block) ? [block] : []
+        }),
+      }
       if (d.title.trim()) out.title = d.title.trim()
       if (d.full) out.full = true
       return out

@@ -35,7 +35,7 @@ export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmi
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
       <DialogContent className="max-h-[90vh] gap-5 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-[650]">{title}</DialogTitle>
@@ -45,7 +45,7 @@ export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmi
           {children}
           <FormError message={error} />
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={onClose}>
+            <Button type="button" variant="ghost" disabled={saving} onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
