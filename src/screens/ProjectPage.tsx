@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { ConfirmDelete } from '@/edit/ConfirmDelete'
 import { ProjectForm } from '@/edit/ProjectForm'
+import { ExportMenu } from '@/export/ExportMenu'
 import { TaskForm, TaskOwnerActions } from '@/edit/TaskForm'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading, Sections } from '@/blocks/Sections'
@@ -53,24 +54,27 @@ export default function ProjectPage() {
           {project.title}
         </h1>
         {project.summary && <p className="max-w-2xl text-base leading-relaxed text-muted">{project.summary}</p>}
-        {owner && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-              Editar projeto
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setNewTask(true)}>
-              Nova tarefa
-            </Button>
-            <ConfirmDelete
-              table="projects"
-              id={project.id}
-              name={project.title}
-              consequence="As tarefas e a equipe deste projeto também serão apagadas."
-              label="Excluir projeto"
-              onDeleted={() => navigate('/projetos')}
-            />
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <ExportMenu projectId={project.id} />
+          {owner && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                Editar projeto
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setNewTask(true)}>
+                Nova tarefa
+              </Button>
+              <ConfirmDelete
+                table="projects"
+                id={project.id}
+                name={project.title}
+                consequence="As tarefas e a equipe deste projeto também serão apagadas."
+                label="Excluir projeto"
+                onDeleted={() => navigate('/projetos')}
+              />
+            </>
+          )}
+        </div>
         {facts.length > 0 && (
           <dl className="flex flex-wrap gap-x-10 gap-y-3 pt-2">
             {facts.map((f, i) => (

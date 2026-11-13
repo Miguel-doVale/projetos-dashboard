@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { ProjectForm } from '@/edit/ProjectForm'
+import { ExportMenu } from '@/export/ExportMenu'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading } from '@/blocks/Sections'
 import { useData } from '@/data/DataProvider'
@@ -62,7 +63,10 @@ export default function Projects() {
     <>
       <div className="flex items-start justify-between gap-4">
         <SectionHeading index="01">Projetos</SectionHeading>
-        {owner && <Button onClick={() => setCreating(true)}>Novo projeto</Button>}
+        <div className="flex gap-2">
+          <ExportMenu />
+          {owner && <Button onClick={() => setCreating(true)}>Novo projeto</Button>}
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p) => (
