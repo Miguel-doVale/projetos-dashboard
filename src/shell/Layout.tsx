@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { motion } from 'motion/react'
+import { LiveBackground } from '@/fx/LiveBackground'
 import { Header } from '@/shell/Header'
 import { motionEnabled, scrollToTop, useReveal, useSmoothScroll } from '@/lib/motion'
 
@@ -19,6 +20,7 @@ export function Layout({ banner = null }: { banner?: ReactNode }) {
 
   return (
     <>
+      <LiveBackground />
       <Header />
       <main className="mx-auto max-w-app px-4 pt-[72px] pb-24 sm:px-6">
         <motion.div

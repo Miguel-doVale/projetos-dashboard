@@ -1,23 +1,38 @@
-import { Link } from 'react-router'
+import { lazy, Suspense } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading } from '@/blocks/Sections'
 import { ImportSeedButton } from '@/data/ImportSeedButton'
 import { useAuth } from '@/auth/AuthProvider'
 import { useData } from '@/data/DataProvider'
+import { ConstellationFallback } from '@/fx/constellation/ConstellationFallback'
+import { buildGraph } from '@/fx/constellation/graph'
 import { overviewStats, progressOf } from '@/lib/derive'
+
+// three vai num pedaço separado, baixado só aqui.
+const Constellation = lazy(() => import('@/fx/constellation/Constellation'))
 
 export default function Overview() {
   const { access } = useAuth()
-  const { projects, tasks, people, memberUids } = useData()
+  const { projects, tasks, people, members, memberUids } = useData()
+  const navigate = useNavigate()
+  const open = (id: string) => navigate(`/projetos/${id}`)
   const stats = overviewStats(projects, tasks, people, memberUids, access === 'owner')
   return (
     <>
-      <header className="mb-14 max-w-3xl">
-        <p className="font-mono text-xs tracking-widest text-label uppercase">LASETE {'//'} Diretoria de Projetos</p>
-        <h1 className="mt-4 text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
-          Onde cada projeto está.
-        </h1>
-      </header>
+      <div className="mb-14 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center lg:gap-10">
+        <header className="mb-10 max-w-3xl lg:mb-0">
+          <p className="font-mono text-xs tracking-widest text-label uppercase">LASETE {'//'} Diretoria de Projetos</p>
+          <h1 className="mt-4 text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
+            Onde cada projeto está.
+          </h1>
+        </header>
+        {projects.length > 0 && (
+          <Suspense fallback={<ConstellationFallback graph={buildGraph(projects, members)} onOpen={open} />}>
+            <Constellation projects={projects} members={members} onOpen={open} />
+          </Suspense>
+        )}
+      </div>
 
       <ImportSeedButton />
 
