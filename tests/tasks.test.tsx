@@ -250,7 +250,7 @@ describe('Tarefas: agrupamento', () => {
 })
 
 describe('Quadro: projetos longos', () => {
-  it('mostra 3 tarefas por projeto na coluna e o resto em "Mostrar mais"', async () => {
+  it('mostra 2 tarefas por projeto na coluna e o resto em "Mostrar mais"', async () => {
     h.data = {
       ...base,
       reload: h.reload,
@@ -259,11 +259,11 @@ describe('Quadro: projetos longos', () => {
     } as DataState
     go('/tarefas?v=quadro')
     const col = screen.getByRole('region', { name: 'A fazer' })
-    expect(within(col).getByText('Tarefa c')).toBeInTheDocument()
-    expect(within(col).queryByText('Tarefa d')).not.toBeInTheDocument()
-    await userEvent.click(within(col).getByRole('button', { name: 'Mostrar mais 2' }))
+    expect(within(col).getByText('Tarefa b')).toBeInTheDocument()
+    expect(within(col).queryByText('Tarefa c')).not.toBeInTheDocument()
+    await userEvent.click(within(col).getByRole('button', { name: 'Mostrar mais 3' }))
     expect(within(col).getByText('Tarefa e')).toBeInTheDocument()
     await userEvent.click(within(col).getByRole('button', { name: 'Mostrar menos' }))
-    expect(within(col).queryByText('Tarefa d')).not.toBeInTheDocument()
+    expect(within(col).queryByText('Tarefa c')).not.toBeInTheDocument()
   })
 })

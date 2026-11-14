@@ -11,13 +11,15 @@ import { TaskStatusIcon } from '@/tasks/TaskStatusIcon'
 const COLUMNS: Task['status'][] = ['todo', 'doing', 'done']
 
 /** Quantas tarefas cada projeto mostra por coluna antes do "mostrar mais": mantém o quadro curto. */
-export const BOARD_PREVIEW = 3
+export const BOARD_PREVIEW = 2
 
 export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: string) => void }) {
-  const { projects, people } = useData()
+  const { projects, people, items } = useData()
   const animate = motionEnabled()
   const glow = usePointerGlow()
   const personName = new Map(people.map((p) => [p.id, p.name]))
+  const withItems = new Set(items.map((i) => i.task_id))
+  const hasItems = (taskId: string) => withItems.has(taskId)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const toggle = (key: string) =>
     setExpanded((prev) => {
@@ -67,20 +69,19 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
                             type="button"
                             onClick={() => onOpen(t.id)}
                             {...glow}
-                            className="fx-card w-full rounded-xl border border-border bg-surface-raised p-3 text-left transition-colors outline-none hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-ring/50"
+                            className="fx-card w-full rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-left transition-colors outline-none hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-ring/50"
                           >
                             <span className={`block text-sm leading-snug ${t.status === 'done' ? 'text-muted' : 'text-foreground'}`}>
                               {t.title}
                             </span>
                             <span className="sr-only"> — {g.project?.title ?? 'Sem projeto'}</span>
-                            <span className="mt-2 flex items-center justify-between gap-2 text-xs">
-                              {t.assignee_id && personName.get(t.assignee_id) ? (
-                                <span className="text-foreground/80">{personName.get(t.assignee_id)}</span>
-                              ) : (
-                                <span className="text-muted/70">Sem responsável</span>
-                              )}
-                              <ProgressCount taskId={t.id} />
-                            </span>
+                            {/* Card enxuto: só mostra a linha de baixo quando há responsável ou itens, para a coluna não crescer à toa. */}
+                            {(t.assignee_id && personName.get(t.assignee_id)) || hasItems(t.id) ? (
+                              <span className="mt-1.5 flex items-center justify-between gap-2 text-xs">
+                                <span className="text-foreground/80">{(t.assignee_id && personName.get(t.assignee_id)) || ''}</span>
+                                <ProgressCount taskId={t.id} />
+                              </span>
+                            ) : null}
                           </button>
                         </motion.li>
                       ))}
