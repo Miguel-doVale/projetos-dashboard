@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/fx/EmptyState'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useData } from '@/data/DataProvider'
@@ -57,7 +58,7 @@ export function SprintManager({ onClose }: { onClose: () => void }) {
           <DialogDescription>Crie, edite ou apague sprints. Tarefas de uma sprint apagada ficam sem sprint.</DialogDescription>
         </DialogHeader>
         {sprints.length === 0 ? (
-          <p className="text-sm text-muted">Nenhuma sprint ainda.</p>
+          <EmptyState compact>Nenhuma sprint ainda.</EmptyState>
         ) : (
           <ul className="grid gap-2">
             {sprints.map((s) => (

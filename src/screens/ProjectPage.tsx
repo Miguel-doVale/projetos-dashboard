@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
+import { SplitTitle } from '@/fx/SplitTitle'
 import { Button } from '@/components/ui/button'
 import { ConfirmDelete } from '@/edit/ConfirmDelete'
 import { ProjectForm } from '@/edit/ProjectForm'
@@ -50,9 +51,9 @@ export default function ProjectPage() {
           <span className="rounded-md bg-foreground px-2 py-0.5 font-mono text-xs font-medium text-black">{project.number}</span>
           <StatusBadge level={project.status_level} label={project.status_label} />
         </div>
-        <h1 className="max-w-4xl text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
+        <SplitTitle className="max-w-4xl text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
           {project.title}
-        </h1>
+        </SplitTitle>
         {project.summary && <p className="max-w-2xl text-base leading-relaxed text-muted">{project.summary}</p>}
         <div className="flex flex-wrap gap-2">
           <ExportMenu projectId={project.id} />

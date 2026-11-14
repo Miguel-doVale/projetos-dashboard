@@ -1,3 +1,6 @@
+import { AnimatePresence, motion } from 'motion/react'
+import { usePointerGlow } from '@/fx/usePointerGlow'
+import { motionEnabled } from '@/lib/motion'
 import { useData } from '@/data/DataProvider'
 import { TASK_STATUS_LABEL } from '@/lib/derive'
 import type { Task } from '@/lib/types'
@@ -8,6 +11,8 @@ const COLUMNS: Task['status'][] = ['todo', 'doing', 'done']
 
 export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: string) => void }) {
   const { projects, people } = useData()
+  const animate = motionEnabled()
+  const glow = usePointerGlow()
   const projectTitle = new Map(projects.map((p) => [p.id, p.title]))
   const personName = new Map(people.map((p) => [p.id, p.name]))
 
@@ -22,12 +27,22 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
               <span className="text-muted">{column.length}</span>
             </h2>
             <ul className="space-y-2">
+              <AnimatePresence initial={false}>
               {column.map((t) => (
-                <li key={t.id}>
+                // layoutId: a tarefa que muda de coluna desliza para a nova. A coluna (data-reveal) é quem faz o reveal; o item só anima layout.
+                <motion.li
+                  key={t.id}
+                  layoutId={animate ? `task-${t.id}` : undefined}
+                  initial={animate ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  exit={animate ? { opacity: 0, transition: { duration: 0.1 } } : undefined}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                >
                   <button
                     type="button"
                     onClick={() => onOpen(t.id)}
-                    className="w-full rounded-xl border border-border bg-surface-raised p-3 text-left transition-colors outline-none hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-ring/50"
+                    {...glow}
+                    className="fx-card w-full rounded-xl border border-border bg-surface-raised p-3 text-left transition-colors outline-none hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
                     <span className="block text-sm text-foreground">{t.title}</span>
                     <span className="mt-1 block text-xs text-muted">{projectTitle.get(t.project_id) ?? '—'}</span>
@@ -36,8 +51,9 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
                       <ProgressCount taskId={t.id} />
                     </span>
                   </button>
-                </li>
+                </motion.li>
               ))}
+              </AnimatePresence>
             </ul>
           </section>
         )

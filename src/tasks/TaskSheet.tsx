@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/fx/EmptyState'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
@@ -99,7 +100,7 @@ function Checklist({ title, items, doneOf, onToggle }: ChecklistProps) {
         {items.length > 0 && <span className="text-muted">{done}/{items.length}</span>}
       </h3>
       {items.length === 0 ? (
-        <p className="text-sm text-muted">Nenhum item.</p>
+        <EmptyState compact>Nenhum item.</EmptyState>
       ) : (
         <ul className="space-y-2.5">
           {items.map((item) => {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
+import { SplitTitle } from '@/fx/SplitTitle'
 import { Button } from '@/components/ui/button'
 import { ConfirmDelete } from '@/edit/ConfirmDelete'
 import { PageForm } from '@/edit/PageForm'
@@ -26,9 +27,9 @@ export default function CustomPage() {
   }
   return (
     <div className="space-y-10">
-      <h1 data-reveal className="text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
+      <SplitTitle className="text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
         {page.title}
-      </h1>
+      </SplitTitle>
       {owner && (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>

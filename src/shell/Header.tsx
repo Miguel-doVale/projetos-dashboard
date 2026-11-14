@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
+import { motion } from 'motion/react'
 import { PageForm } from '@/edit/PageForm'
 import { useAuth } from '@/auth/AuthProvider'
 import { useData } from '@/data/DataProvider'
 import { Button } from '@/components/ui/button'
+import { motionEnabled } from '@/lib/motion'
 
 const BASE_LINKS = [
   { to: '/', label: 'Visão geral', end: true },
@@ -18,6 +20,8 @@ export function Header() {
   const [newPage, setNewPage] = useState(false)
   const { pages } = useData()
   const [scrolled, setScrolled] = useState(false)
+  // Mola sem quique; sem movimento a pílula troca de aba na hora.
+  const pillSpring = motionEnabled() ? ({ type: 'spring', bounce: 0, duration: 0.35 } as const) : ({ duration: 0 } as const)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4)
@@ -38,18 +42,31 @@ export function Header() {
           LASETE <span className="text-muted">{'//'}</span> Projetos
         </Link>
         <nav aria-label="Principal" className="flex min-w-0 justify-center">
-          <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#222] bg-[#080808] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <motion.div layoutScroll className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#222] bg-[#080808] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {links.map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}
                 end={l.end}
-                className="rounded-lg px-3.5 py-1.5 text-sm whitespace-nowrap text-muted transition-colors hover:text-foreground aria-[current=page]:bg-[#242424] aria-[current=page]:text-foreground"
+                className="relative rounded-lg px-3.5 py-1.5 text-sm whitespace-nowrap text-muted transition-colors hover:text-foreground aria-[current=page]:text-foreground"
               >
-                {l.label}
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.span
+                        layoutId="nav-pill"
+                        data-nav-pill
+                        aria-hidden="true"
+                        className="absolute inset-0 rounded-lg bg-[#242424]"
+                        transition={pillSpring}
+                      />
+                    )}
+                    <span className="relative">{l.label}</span>
+                  </>
+                )}
               </NavLink>
             ))}
-          </div>
+          </motion.div>
         </nav>
         <div className="flex items-center gap-3">
           {email && <span className="hidden font-mono text-xs text-muted lg:inline">{email}</span>}

@@ -3,7 +3,6 @@
 import * as React from "react"
 import { cn } from "cn"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
-import { CheckIcon } from "lucide-react"
 
 function Checkbox({
   className,
@@ -22,8 +21,10 @@ function Checkbox({
         data-slot="checkbox-indicator"
         className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
       >
-        <CheckIcon
-        />
+        {/* Traço desenhado com stroke-dashoffset (animação em index.css, desligada sob movimento reduzido). */}
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" pathLength={1} className="check-stroke" />
+        </svg>
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

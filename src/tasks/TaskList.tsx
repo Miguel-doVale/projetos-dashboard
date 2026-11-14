@@ -1,10 +1,13 @@
+import { AnimatePresence, motion } from 'motion/react'
+import { EmptyState } from '@/fx/EmptyState'
+import { motionEnabled } from '@/lib/motion'
 import { useData } from '@/data/DataProvider'
 import { TASK_STATUS_LABEL } from '@/lib/derive'
 import type { Task } from '@/lib/types'
 import { formatDue, itemProgress, sortTasks } from '@/tasks/filters'
 
 export function EmptyTasks() {
-  return <p className="rounded-xl border border-border bg-surface-raised px-4 py-8 text-center text-sm text-muted">Nenhuma tarefa por aqui.</p>
+  return <EmptyState>Nenhuma tarefa por aqui.</EmptyState>
 }
 
 export function ProgressCount({ taskId }: { taskId: string }) {
@@ -31,14 +34,24 @@ export function TaskList({ tasks, onOpen, showProject = true }: Props) {
   const order = new Map(projects.map((p, i) => [p.id, i]))
   const personName = new Map(people.map((p) => [p.id, p.name]))
   const sprintName = new Map(sprints.map((s) => [s.id, s.name]))
+  const animate = motionEnabled()
   const rows = sortTasks(tasks).sort((a, b) => (order.get(a.project_id) ?? 0) - (order.get(b.project_id) ?? 0))
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-raised">
+    // A entrada por rolagem fica na lista toda (data-reveal); cada linha só anima layout e saída, para não brigar com o reveal.
+    <ul data-reveal className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-raised">
+      <AnimatePresence initial={false}>
       {rows.map((t) => {
         const due = formatDue(t.due_on)
         return (
-          <li key={t.id} data-reveal>
+          <motion.li
+            key={t.id}
+            layout={animate ? 'position' : false}
+            initial={animate ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={animate ? { opacity: 0, transition: { duration: 0.12 } } : undefined}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
             <button
               type="button"
               onClick={() => onOpen(t.id)}
@@ -56,9 +69,10 @@ export function TaskList({ tasks, onOpen, showProject = true }: Props) {
                 {TASK_STATUS_LABEL[t.status]}
               </span>
             </button>
-          </li>
+          </motion.li>
         )
       })}
+      </AnimatePresence>
     </ul>
   )
 }

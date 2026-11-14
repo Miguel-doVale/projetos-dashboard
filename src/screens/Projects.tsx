@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/fx/EmptyState'
+import { ProgressFill } from '@/fx/ProgressFill'
+import { usePointerGlow } from '@/fx/usePointerGlow'
 import { ProjectForm } from '@/edit/ProjectForm'
 import { ExportMenu } from '@/export/ExportMenu'
 import { StatusBadge } from '@/blocks/StatusBadge'
@@ -13,12 +16,14 @@ import type { Project } from '@/lib/types'
 function ProjectCard({ project }: { project: Project }) {
   const { members, people, tasks } = useData()
   const { done, total } = progressOf(project.id, tasks)
+  const glow = usePointerGlow()
   const lead = teamOf(project.id, members, people).find((t) => t.is_lead)
   return (
     <Link
       to={`/projetos/${project.id}`}
       data-reveal
-      className="group flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 transition-colors hover:border-accent/40 hover:bg-hover"
+      {...glow}
+      className="fx-card group flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 transition-colors hover:border-accent/40 hover:bg-hover"
     >
       <div className="flex items-center justify-between gap-3">
         <span className="rounded-md bg-foreground px-2 py-0.5 font-mono text-xs font-medium text-black">{project.number}</span>
@@ -43,7 +48,7 @@ function ProjectCard({ project }: { project: Project }) {
             aria-valuenow={done}
             className="h-[3px] flex-1 overflow-hidden rounded-full bg-border"
           >
-            <div className="h-full bg-accent" style={{ width: total ? `${(done / total) * 100}%` : '0%' }} />
+            <ProgressFill fraction={total ? done / total : 0} />
           </div>
           <span className="font-mono text-xs text-muted">
             {done}/{total}
@@ -68,11 +73,15 @@ export default function Projects() {
           {owner && <Button onClick={() => setCreating(true)}>Novo projeto</Button>}
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((p) => (
-          <ProjectCard key={p.id} project={p} />
-        ))}
-      </div>
+      {projects.length === 0 ? (
+        <EmptyState>Nenhum projeto ainda.</EmptyState>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((p) => (
+            <ProjectCard key={p.id} project={p} />
+          ))}
+        </div>
+      )}
       {creating && <ProjectForm onClose={() => setCreating(false)} onSaved={(id) => navigate(`/projetos/${id}`)} />}
     </>
   )

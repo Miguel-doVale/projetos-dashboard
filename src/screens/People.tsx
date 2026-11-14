@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/fx/EmptyState'
 import { ConfirmDelete } from '@/edit/ConfirmDelete'
 import { PersonForm } from '@/edit/PersonForm'
 import { SectionHeading } from '@/blocks/Sections'
@@ -31,6 +32,7 @@ export default function People() {
           <Button onClick={() => setForm('new')}>Nova pessoa</Button>
         </div>
       )}
+      {people.length === 0 && <EmptyState>Nenhuma pessoa cadastrada.</EmptyState>}
       {ordered.map(([area, list], i) => (
         <section key={area}>
           <SectionHeading index={String(i + 1).padStart(2, '0')}>{area}</SectionHeading>

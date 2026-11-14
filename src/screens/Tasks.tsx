@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
 import { SprintManager } from '@/edit/SprintManager'
 import { TaskForm, TaskOwnerActions } from '@/edit/TaskForm'
+import { SplitTitle } from '@/fx/SplitTitle'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useData } from '@/data/DataProvider'
@@ -76,7 +77,7 @@ export default function Tasks() {
     <div className="space-y-8">
       <header className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">Tarefas</h1>
+          <SplitTitle className="text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">Tarefas</SplitTitle>
           {owner && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setSprintsOpen(true)}>

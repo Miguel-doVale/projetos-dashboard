@@ -103,3 +103,60 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Cards com brilho que segue o cursor e leve inclinação (ver src/fx/usePointerGlow.ts). */
+@property --glow {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.fx-card {
+  position: relative;
+  background-image: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(156, 221, 189, calc(var(--glow) * 0.08)),
+    transparent 70%
+  );
+  transition:
+    --glow 200ms ease-out,
+    color 150ms,
+    background-color 150ms,
+    border-color 150ms;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fx-card:hover {
+    transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  }
+  /* Enquanto inclinado, a área de acerto cobre a borda que se afasta; sem isso o card piscaria na beirada. */
+  .fx-card:hover::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+  /* Volta suave ao sair; durante o movimento a transformação acompanha o cursor sem atraso. */
+  .fx-card[data-fx-rest] {
+    transition:
+      transform 220ms ease-out,
+      --glow 200ms ease-out,
+      color 150ms,
+      background-color 150ms,
+      border-color 150ms;
+  }
+}
+
+/* Traço do check se desenha ao marcar. */
+@keyframes check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.check-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: check-draw 180ms ease-out;
+}

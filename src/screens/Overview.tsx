@@ -5,6 +5,9 @@ import { SectionHeading } from '@/blocks/Sections'
 import { ImportSeedButton } from '@/data/ImportSeedButton'
 import { useAuth } from '@/auth/AuthProvider'
 import { useData } from '@/data/DataProvider'
+import { CountUp } from '@/fx/CountUp'
+import { SplitTitle } from '@/fx/SplitTitle'
+import { usePointerGlow } from '@/fx/usePointerGlow'
 import { ConstellationFallback } from '@/fx/constellation/ConstellationFallback'
 import { buildGraph } from '@/fx/constellation/graph'
 import { overviewStats, progressOf } from '@/lib/derive'
@@ -16,6 +19,7 @@ export default function Overview() {
   const { access } = useAuth()
   const { projects, tasks, people, members, memberUids } = useData()
   const navigate = useNavigate()
+  const glow = usePointerGlow({ tilt: false }) // as células ficam num contêiner com overflow-hidden
   const open = (id: string) => navigate(`/projetos/${id}`)
   const stats = overviewStats(projects, tasks, people, memberUids, access === 'owner')
   return (
@@ -23,9 +27,9 @@ export default function Overview() {
       <div className="mb-14 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center lg:gap-10">
         <header className="mb-10 max-w-3xl lg:mb-0">
           <p className="font-mono text-xs tracking-widest text-label uppercase">LASETE {'//'} Diretoria de Projetos</p>
-          <h1 className="mt-4 text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
+          <SplitTitle className="mt-4 text-4xl leading-[1.05] font-[650] tracking-tight text-foreground sm:text-5xl">
             Onde cada projeto está.
-          </h1>
+          </SplitTitle>
         </header>
         {projects.length > 0 && (
           <Suspense fallback={<ConstellationFallback graph={buildGraph(projects, members)} onOpen={open} />}>
@@ -38,8 +42,10 @@ export default function Overview() {
 
       <dl className="mb-16 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (
-          <div key={s.label} className="bg-surface-raised px-4 py-4">
-            <dd className="text-2xl font-[650] text-foreground tabular-nums">{s.value}</dd>
+          <div key={s.label} {...glow} className="fx-card bg-surface-raised px-4 py-4">
+            <dd className="text-2xl font-[650] text-foreground tabular-nums">
+              <CountUp value={s.value} />
+            </dd>
             <dt className="mt-1 font-mono text-[11px] tracking-wider text-muted uppercase">{s.label}</dt>
           </div>
         ))}
