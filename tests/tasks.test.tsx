@@ -267,3 +267,22 @@ describe('Quadro: projetos longos', () => {
     expect(within(col).queryByText('Tarefa c')).not.toBeInTheDocument()
   })
 })
+
+describe('Quadro: arrastar entre colunas', () => {
+  it('soltar em outra coluna muda o status; na mesma coluna ou fora, não', async () => {
+    const { dropTarget } = await import('@/tasks/TaskBoard')
+    expect(dropTarget('todo', 'doing')).toBe('doing')
+    expect(dropTarget('doing', 'done')).toBe('done')
+    expect(dropTarget('todo', 'todo')).toBeNull()
+    expect(dropTarget('todo', undefined)).toBeNull()
+    expect(dropTarget('todo', 'outra-coisa')).toBeNull()
+  })
+
+  it('os cards do quadro são arrastáveis e continuam abrindo a tarefa no clique', async () => {
+    go('/tarefas?v=quadro')
+    const card = screen.getByRole('button', { name: /Escrever testes/ })
+    expect(card).toHaveAttribute('aria-roledescription', 'tarefa arrastável')
+    await userEvent.click(card)
+    expect(where()).toContain('t=t2')
+  })
+})

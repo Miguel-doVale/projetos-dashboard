@@ -29,6 +29,8 @@ O dono é o usuário cujo UID está em `firestore.rules`. Para dar acesso a outr
 
 Membros veem tudo e só podem marcar itens e mudar o status das tarefas; criar, editar e apagar é só do dono.
 
+No quadro de tarefas, arrastar um card para outra coluna muda o status (dono e membros). Pelo teclado: Espaço pega o card, as setas trocam de coluna, Espaço solta e Esc cancela; Enter abre a tarefa.
+
 ## Publicar na Vercel
 
 1. Importe o repositório na Vercel. Framework: Vite; comando de build `npm run build`; pasta de saída `dist`. O `vercel.json` cuida da reescrita para `index.html`, do `X-Robots-Tag: noindex, nofollow` e do cache.
