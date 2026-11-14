@@ -83,14 +83,16 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('Tarefas', () => {
-  it('a lista mostra projeto, responsável, sprint e progresso dos itens', () => {
+  it('a lista agrupa por projeto e mostra responsável, sprint e progresso dos itens', () => {
     go('/tarefas')
     const row = screen.getByRole('button', { name: /Montar header/ })
-    expect(row).toHaveTextContent('Portal')
+    expect(row.closest('section')).toHaveAccessibleName('Portal')
     expect(row).toHaveTextContent('Ana Souza')
     expect(row).toHaveTextContent('Sprint 1')
     expect(row).toHaveTextContent('2/5')
-    expect(screen.getByRole('button', { name: /Publicar/ })).toHaveTextContent('Gadget')
+    expect(screen.getByRole('button', { name: /Publicar/ }).closest('section')).toHaveAccessibleName('Gadget')
+    // Cada grupo mostra quantas tarefas do projeto estão feitas.
+    expect(screen.getByRole('region', { name: 'Gadget' })).toHaveTextContent('1/1')
     // Tarefa sem itens não mostra contador.
     expect(screen.getByRole('button', { name: /Escrever testes/ })).not.toHaveTextContent('0/0')
     expect(screen.getByRole('button', { name: /Escrever testes/ })).not.toHaveTextContent(/\d\/\d/)
@@ -227,5 +229,22 @@ describe('Tarefas', () => {
     h.data = { ...base, tasks: [], items: [], reload: h.reload } as DataState
     go('/tarefas')
     expect(screen.getByText('Nenhuma tarefa por aqui.')).toBeInTheDocument()
+  })
+})
+
+describe('Tarefas: agrupamento', () => {
+  it('recolher um projeto esconde as tarefas dele e mantém as dos outros', async () => {
+    go('/tarefas')
+    await userEvent.click(screen.getByRole('button', { name: 'Recolher Portal' }))
+    expect(screen.queryByRole('button', { name: /Montar header/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Publicar/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Expandir Portal' }))
+    expect(screen.getByRole('button', { name: /Montar header/ })).toBeInTheDocument()
+  })
+
+  it('no quadro o projeto aparece uma vez por coluna, não em cada card', async () => {
+    go('/tarefas?v=quadro')
+    const feito = screen.getByRole('region', { name: 'Feito' })
+    expect(within(feito).getByRole('heading', { name: /Gadget/ })).toBeInTheDocument()
   })
 })

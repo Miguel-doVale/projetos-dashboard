@@ -4,8 +4,8 @@ import { motionEnabled } from '@/lib/motion'
 import { useData } from '@/data/DataProvider'
 import { TASK_STATUS_LABEL } from '@/lib/derive'
 import type { Task } from '@/lib/types'
-import { sortTasks } from '@/tasks/filters'
-import { ProgressCount } from '@/tasks/TaskList'
+import { groupByProject, ProgressCount } from '@/tasks/TaskList'
+import { TaskStatusIcon } from '@/tasks/TaskStatusIcon'
 
 const COLUMNS: Task['status'][] = ['todo', 'doing', 'done']
 
@@ -13,48 +13,70 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
   const { projects, people } = useData()
   const animate = motionEnabled()
   const glow = usePointerGlow()
-  const projectTitle = new Map(projects.map((p) => [p.id, p.title]))
   const personName = new Map(people.map((p) => [p.id, p.name]))
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
       {COLUMNS.map((status) => {
-        const column = sortTasks(tasks.filter((t) => t.status === status))
+        const column = tasks.filter((t) => t.status === status)
+        const groups = groupByProject(column, projects)
         return (
           <section key={status} data-reveal aria-label={TASK_STATUS_LABEL[status]} className="rounded-xl border border-border bg-surface p-3">
-            <h2 className="mb-3 flex items-baseline justify-between px-1 font-mono text-xs tracking-widest text-label uppercase">
-              {TASK_STATUS_LABEL[status]}
+            <h2 className="mb-3 flex items-center justify-between gap-2 px-1 font-mono text-xs tracking-widest text-label uppercase">
+              <span className="flex items-center gap-2">
+                <TaskStatusIcon status={status} />
+                {TASK_STATUS_LABEL[status]}
+              </span>
               <span className="text-muted">{column.length}</span>
             </h2>
-            <ul className="space-y-2">
-              <AnimatePresence initial={false}>
-              {column.map((t) => (
-                // layoutId: a tarefa que muda de coluna desliza para a nova. A coluna (data-reveal) é quem faz o reveal; o item só anima layout.
-                <motion.li
-                  key={t.id}
-                  layoutId={animate ? `task-${t.id}` : undefined}
-                  initial={animate ? { opacity: 0 } : false}
-                  animate={{ opacity: 1 }}
-                  exit={animate ? { opacity: 0, pointerEvents: 'none', transition: { duration: 0.1 } } : undefined}
-                  transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onOpen(t.id)}
-                    {...glow}
-                    className="fx-card w-full rounded-xl border border-border bg-surface-raised p-3 text-left transition-colors outline-none hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-ring/50"
-                  >
-                    <span className="block text-sm text-foreground">{t.title}</span>
-                    <span className="mt-1 block text-xs text-muted">{projectTitle.get(t.project_id) ?? '—'}</span>
-                    <span className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
-                      <span>{(t.assignee_id && personName.get(t.assignee_id)) || 'Sem responsável'}</span>
-                      <ProgressCount taskId={t.id} />
-                    </span>
-                  </button>
-                </motion.li>
+            {groups.length === 0 && <p className="px-1 py-6 text-center text-xs text-muted/70">Nada aqui.</p>}
+            <div className="space-y-4">
+              {groups.map((g) => (
+                <div key={g.project?.id ?? 'sem-projeto'}>
+                  {/* Cabeçalho do projeto dentro da coluna: o nome sai de cada card e aparece uma vez só. */}
+                  <h3 className="mb-2 flex items-center gap-2 border-b border-border px-1 pb-1.5 text-xs text-muted">
+                    {g.project && <span className="font-mono text-foreground/70">{g.project.number}</span>}
+                    <span className="min-w-0 truncate">{g.project?.title ?? 'Sem projeto'}</span>
+                    <span className="ml-auto font-mono">{g.tasks.length}</span>
+                  </h3>
+                  <ul className="space-y-2">
+                    <AnimatePresence initial={false}>
+                      {g.tasks.map((t) => (
+                        // layoutId: a tarefa que muda de coluna desliza para a nova. A coluna (data-reveal) é quem faz o reveal; o item só anima layout.
+                        <motion.li
+                          key={t.id}
+                          layoutId={animate ? `task-${t.id}` : undefined}
+                          initial={animate ? { opacity: 0 } : false}
+                          animate={{ opacity: 1 }}
+                          exit={animate ? { opacity: 0, pointerEvents: 'none', transition: { duration: 0.1 } } : undefined}
+                          transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => onOpen(t.id)}
+                            {...glow}
+                            className="fx-card w-full rounded-xl border border-border bg-surface-raised p-3 text-left transition-colors outline-none hover:border-accent/50 focus-visible:ring-2 focus-visible:ring-ring/50"
+                          >
+                            <span className={`block text-sm leading-snug ${t.status === 'done' ? 'text-muted' : 'text-foreground'}`}>
+                              {t.title}
+                            </span>
+                            <span className="sr-only"> — {g.project?.title ?? 'Sem projeto'}</span>
+                            <span className="mt-2 flex items-center justify-between gap-2 text-xs">
+                              {t.assignee_id && personName.get(t.assignee_id) ? (
+                                <span className="text-foreground/80">{personName.get(t.assignee_id)}</span>
+                              ) : (
+                                <span className="text-muted/70">Sem responsável</span>
+                              )}
+                              <ProgressCount taskId={t.id} />
+                            </span>
+                          </button>
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                </div>
               ))}
-              </AnimatePresence>
-            </ul>
+            </div>
           </section>
         )
       })}

@@ -31,9 +31,9 @@ function Block({ block }: { block: LeafBlock }) {
       )
     case 'checklist':
       return (
-        <ul className="space-y-2 text-sm leading-relaxed">
+        <ul className="divide-y divide-border text-sm leading-relaxed">
           {block.items.map((item, i) => (
-            <li key={i} data-done={item.done ? 'true' : 'false'} className="flex gap-2.5 data-[done=true]:text-muted">
+            <li key={i} data-done={item.done ? 'true' : 'false'} className="flex gap-2.5 py-2.5 first:pt-0 last:pb-0 data-[done=true]:text-muted">
               <span
                 aria-hidden="true"
                 className={`mt-1 size-3 shrink-0 rounded-[3px] border ${item.done ? 'border-accent bg-accent' : 'border-border'}`}
@@ -75,11 +75,14 @@ function Block({ block }: { block: LeafBlock }) {
       )
     case 'decisions':
       return (
-        <dl className="space-y-2.5 text-sm leading-relaxed">
+        // Uma linha por item, separadas por divisória: cada decisão (em geral, um projeto) fica num bloco próprio.
+        <dl className="divide-y divide-border text-sm leading-relaxed">
           {block.items.map((item, i) => (
-            <div key={i} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-              <dt className="shrink-0 font-medium text-foreground sm:w-28">{item.label}</dt>
-              <dd className="text-foreground/80">{item.text}</dd>
+            <div key={i} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-baseline sm:gap-4">
+              {item.label && (
+                <dt className="shrink-0 font-medium text-accent sm:w-28">{item.label}</dt>
+              )}
+              <dd className="text-foreground/85">{item.text}</dd>
             </div>
           ))}
         </dl>

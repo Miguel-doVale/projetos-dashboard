@@ -87,7 +87,8 @@ describe('telas de leitura', () => {
     expect(screen.getByText('Item um')).toBeInTheDocument()
     const tasks = screen.getByRole('heading', { name: 'Tarefas' }).closest('section')!
     expect(within(tasks).getByText('Montar header')).toBeInTheDocument()
-    expect(within(tasks).getByText('Fazendo')).toBeInTheDocument()
+    // O status vem do ícone e, para leitores de tela, do nome do botão.
+    expect(within(tasks).getByText('Montar header').closest('button')).toHaveTextContent('Fazendo')
     expect(within(tasks).getByText('Ana Souza')).toBeInTheDocument()
   })
 
