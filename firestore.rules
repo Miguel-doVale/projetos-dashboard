@@ -7,8 +7,19 @@ service cloud.firestore {
       return 'OWNER_UID_PLACEHOLDER';
     }
 
-    function isOwner() {
+    // Dono raiz: o UID acima. Não é um documento, então ninguém o remove pelo app.
+    function isRoot() {
       return request.auth != null && request.auth.uid == ownerUid();
+    }
+
+    // Administrador: existe admins/{uid}. Dono raiz e administradores nomeiam administradores.
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isOwner() {
+      return isRoot() || isAdmin();
     }
 
     function isMember() {
@@ -63,6 +74,11 @@ service cloud.firestore {
     }
 
     match /members/{uid} {
+      allow read: if isOwner() || (request.auth != null && request.auth.uid == uid);
+      allow write: if isOwner();
+    }
+
+    match /admins/{uid} {
       allow read: if isOwner() || (request.auth != null && request.auth.uid == uid);
       allow write: if isOwner();
     }
