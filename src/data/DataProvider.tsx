@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { useAuth } from '@/auth/AuthProvider'
 import { db } from '@/lib/firebase'
+import { decodeFromFirestore } from '@/lib/firestoreCodec'
 import type {
   Page,
   Person,
@@ -56,7 +57,7 @@ type Raw = { id: string; position?: number; created_at?: string | null }
 
 async function fetchTable<T>(table: TableName): Promise<T[]> {
   const snap = await getDocs(collection(db, table))
-  const rows = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as unknown as Raw)
+  const rows = snap.docs.map((d) => ({ ...decodeFromFirestore(d.data()), id: d.id }) as unknown as Raw)
   if (ORDERED[table]) {
     rows.sort(
       (a, b) =>

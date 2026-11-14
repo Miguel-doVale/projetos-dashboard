@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import type { DocumentReference } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { decodeFromFirestore, encodeForFirestore } from '@/lib/firestoreCodec'
 import type { Person, Row, TableName, Task } from '@/lib/types'
 
 // Limite do Firestore por lote de escrita.
@@ -30,8 +31,8 @@ export async function runBatched(ops: WriteOp[]): Promise<void> {
   for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
     const batch = writeBatch(db)
     for (const op of ops.slice(i, i + BATCH_LIMIT)) {
-      if (op.type === 'set') batch.set(op.ref, op.data)
-      else if (op.type === 'update') batch.update(op.ref, op.data)
+      if (op.type === 'set') batch.set(op.ref, encodeForFirestore(op.data))
+      else if (op.type === 'update') batch.update(op.ref, encodeForFirestore(op.data))
       else batch.delete(op.ref)
     }
     await batch.commit()
@@ -96,12 +97,12 @@ export async function save<T extends TableName>(table: T, row: Partial<Row<T>>):
   return guard('Não foi possível salvar. Tente de novo.', async () => {
     if (id) {
       const ref = doc(db, table, id)
-      await updateDoc(ref, fields as Record<string, unknown>)
+      await updateDoc(ref, encodeForFirestore(fields as Record<string, unknown>))
       const snap = await getDoc(ref)
-      return { ...snap.data(), id } as Row<T>
+      return { ...decodeFromFirestore(snap.data()), id } as Row<T>
     }
     const data = { ...fields, created_at: new Date().toISOString() }
-    const ref = await addDoc(collection(db, table), data)
+    const ref = await addDoc(collection(db, table), encodeForFirestore(data))
     return { ...data, id: ref.id } as unknown as Row<T>
   })
 }
@@ -129,13 +130,12 @@ export async function setProjectTeam(
     }
     for (const m of team) {
       const ref = existing.get(m.person_id)
-      if (ref) batch.update(ref, { role: m.role, is_lead: m.is_lead })
+      if (ref) batch.update(ref, encodeForFirestore({ role: m.role, is_lead: m.is_lead }))
       else {
-        batch.set(doc(collection(db, 'project_members')), {
-          project_id: projectId,
-          ...m,
-          created_at: new Date().toISOString(),
-        })
+        batch.set(
+          doc(collection(db, 'project_members')),
+          encodeForFirestore({ project_id: projectId, ...m, created_at: new Date().toISOString() }),
+        )
       }
     }
     await batch.commit()
@@ -144,13 +144,13 @@ export async function setProjectTeam(
 
 export async function setItemDone(itemId: string, done: boolean): Promise<void> {
   await guard('Não foi possível atualizar o item. Tente de novo.', () =>
-    updateDoc(doc(db, 'task_items', itemId), { done }),
+    updateDoc(doc(db, 'task_items', itemId), encodeForFirestore({ done })),
   )
 }
 
 export async function setTaskStatus(taskId: string, status: Task['status']): Promise<void> {
   await guard('Não foi possível atualizar a tarefa. Tente de novo.', () =>
-    updateDoc(doc(db, 'tasks', taskId), { status }),
+    updateDoc(doc(db, 'tasks', taskId), encodeForFirestore({ status })),
   )
 }
 
@@ -161,6 +161,6 @@ export async function setMemberAccess(person: Person, isMember: boolean): Promis
   }
   const ref = doc(db, 'members', person.uid)
   await guard('Não foi possível atualizar o acesso. Tente de novo.', () =>
-    isMember ? setDoc(ref, { person_id: person.id }) : deleteDoc(ref),
+    isMember ? setDoc(ref, encodeForFirestore({ person_id: person.id })) : deleteDoc(ref),
   )
 }

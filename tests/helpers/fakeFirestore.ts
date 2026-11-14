@@ -34,6 +34,18 @@ export const ids = (col: string) => [...(store.get(col)?.keys() ?? [])].sort()
 let nextId = 1
 const newId = () => `auto${nextId++}`
 
+/** Como o SDK real: array direto dentro de array é recusado. */
+function hasNestedArray(v: unknown, inArray = false): boolean {
+  if (Array.isArray(v)) return inArray || v.some((x) => hasNestedArray(x, true))
+  if (typeof v === 'object' && v !== null) return Object.values(v).some((x) => hasNestedArray(x, false))
+  return false
+}
+function checkData(fn: string, data: Data) {
+  if (hasNestedArray(data)) {
+    throw new Error(`Function ${fn}() called with invalid data. Nested arrays are not supported`)
+  }
+}
+
 export const getFirestore = () => ({})
 export const collection = (_db: unknown, col: string): ColRef => ({ kind: 'col', col })
 export function doc(a: unknown, col?: string, id?: string): DocRef {
@@ -74,14 +86,17 @@ export async function getDoc(ref: DocRef) {
 }
 
 export async function addDoc(c: ColRef, data: Data) {
+  checkData('addDoc', data)
   const id = newId()
   seed(c.col, id, { ...data })
   return { id }
 }
 export async function setDoc(ref: DocRef, data: Data) {
+  checkData('setDoc', data)
   seed(ref.col, ref.id, { ...data })
 }
 export async function updateDoc(ref: DocRef, data: Data) {
+  checkData('updateDoc', data)
   const cur = read(ref.col, ref.id)
   if (!cur) throw Object.assign(new Error('not-found'), { code: 'not-found' })
   seed(ref.col, ref.id, { ...cur, ...data })
@@ -93,9 +108,14 @@ export async function deleteDoc(ref: DocRef) {
 export function writeBatch() {
   const ops: (() => void)[] = []
   return {
-    set: (ref: DocRef, data: Data) => void ops.push(() => seed(ref.col, ref.id, { ...data })),
-    update: (ref: DocRef, data: Data) =>
-      void ops.push(() => seed(ref.col, ref.id, { ...(read(ref.col, ref.id) ?? {}), ...data })),
+    set: (ref: DocRef, data: Data) => {
+      checkData('WriteBatch.set', data)
+      ops.push(() => seed(ref.col, ref.id, { ...data }))
+    },
+    update: (ref: DocRef, data: Data) => {
+      checkData('WriteBatch.update', data)
+      ops.push(() => seed(ref.col, ref.id, { ...(read(ref.col, ref.id) ?? {}), ...data }))
+    },
     delete: (ref: DocRef) => void ops.push(() => void store.get(ref.col)?.delete(ref.id)),
     commit: async () => {
       commits.push(ops.length)

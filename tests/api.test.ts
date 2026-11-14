@@ -4,6 +4,7 @@ import { importSeed } from '@/data/importSeed'
 import { seedData } from '@/data/seedData'
 import type { Person } from '@/lib/types'
 import * as fake from './helpers/fakeFirestore'
+import { hasNestedArray } from './helpers/nested'
 
 vi.mock('firebase/firestore', async () => await import('./helpers/fakeFirestore'))
 
@@ -95,6 +96,32 @@ describe('save', () => {
   })
 })
 
+describe('save com tabela (sem array dentro de array)', () => {
+  const sections = [
+    { title: 'T', blocks: [{ type: 'table', headers: ['A', 'B'], rows: [['1', '2'], ['3', '4']] }] },
+  ]
+
+  it('cria um projeto com tabela e devolve o mesmo conteúdo', async () => {
+    const row = await save('projects', { title: 'Com tabela', sections } as never)
+    expect(hasNestedArray(fake.read('projects', row.id))).toBe(false)
+    expect((row as { sections: unknown }).sections).toEqual(sections)
+  })
+
+  it('atualiza uma página com tabela', async () => {
+    fake.seed('pages', 'pg', { slug: 'x', blocks: [] })
+    const blocks = sections[0].blocks
+    const row = await save('pages', { id: 'pg', blocks } as never)
+    expect(hasNestedArray(fake.read('pages', 'pg'))).toBe(false)
+    expect((row as { blocks: unknown }).blocks).toEqual(blocks)
+  })
+
+  it('o fake recusa array dentro de array', async () => {
+    await expect(fake.setDoc(fake.doc({}, 'x', 'y') as never, { rows: [['a']] })).rejects.toThrow(
+      'Nested arrays are not supported',
+    )
+  })
+})
+
 describe('setProjectTeam', () => {
   it('pessoa repetida lança', async () => {
     const dup = { role: null, is_lead: false }
@@ -162,5 +189,15 @@ describe('importSeed', () => {
     expect(members.every((m) => projectIds.has(m.project_id as string) && personIds.has(m.person_id as string))).toBe(true)
     const tasks = [...(fake.store.get('tasks')?.values() ?? [])]
     expect(tasks.every((t) => projectIds.has(t.project_id as string) && t.created_at)).toBe(true)
+  })
+
+  it('nenhum documento gravado tem array dentro de array', async () => {
+    fake.store.clear()
+    await importSeed()
+    for (const [col, docs] of fake.store) {
+      for (const [id, data] of docs) expect(hasNestedArray(data), `${col}/${id}`).toBe(false)
+    }
+    const withTable = [...(fake.store.get('projects')?.values() ?? []), ...(fake.store.get('pages')?.values() ?? [])]
+    expect(JSON.stringify(withTable)).toContain('__row')
   })
 })
