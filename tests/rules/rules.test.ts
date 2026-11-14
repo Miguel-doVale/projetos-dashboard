@@ -35,6 +35,9 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     await setDoc(doc(db, 'members/member-uid'), { person_id: 'p1' })
+    await setDoc(doc(db, 'admins/admin-uid'), { person_id: 'p2' })
+    await setDoc(doc(db, 'people/p2'), { name: 'Bia', uid: 'admin-uid' })
+    await setDoc(doc(db, 'people/p3'), { name: 'Caio', uid: null })
     await setDoc(doc(db, 'people/p1'), { name: 'Ana', uid: 'member-uid' })
     await setDoc(doc(db, 'projects/pr1'), { title: 'Projeto' })
     await setDoc(doc(db, 'project_members/pm1'), { project_id: 'pr1', person_id: 'p1' })
@@ -46,6 +49,7 @@ beforeEach(async () => {
 })
 
 const owner = () => env.authenticatedContext('owner-uid').firestore()
+const admin = () => env.authenticatedContext('admin-uid').firestore()
 const member = () => env.authenticatedContext('member-uid').firestore()
 const stranger = () => env.authenticatedContext('stranger-uid').firestore()
 const anon = () => env.unauthenticatedContext().firestore()
@@ -70,6 +74,64 @@ describe('dono', () => {
       await assertSucceeds(setDoc(doc(db, name, 'novo'), { x: 1 }))
       await assertSucceeds(updateDoc(doc(db, name, id), { x: 2 }))
       await assertSucceeds(deleteDoc(doc(db, name, id)))
+    })
+  }
+})
+
+describe('administrador', () => {
+  for (const name of [...COLLECTIONS, 'members'] as const) {
+    it(`lê, cria, atualiza e apaga em ${name}`, async () => {
+      const db = admin()
+      const id = name === 'members' ? 'member-uid' : FIXTURE_ID[name]
+      await assertSucceeds(getDoc(doc(db, name, id)))
+      await assertSucceeds(getDocs(collection(db, name)))
+      await assertSucceeds(setDoc(doc(db, name, 'novo'), { x: 1 }))
+      await assertSucceeds(updateDoc(doc(db, name, id), { x: 2 }))
+      await assertSucceeds(deleteDoc(doc(db, name, id)))
+    })
+  }
+
+  it('cria e apaga tarefas e itens, e atualiza o title da tarefa', async () => {
+    const db = admin()
+    await assertSucceeds(setDoc(doc(db, 'tasks/novo'), { title: 'N', status: 'todo' }))
+    await assertSucceeds(setDoc(doc(db, 'task_items/novo'), { task_id: 't1', done: false }))
+    await assertSucceeds(updateDoc(doc(db, 'tasks/t1'), { title: 'Outro' }))
+    await assertSucceeds(deleteDoc(doc(db, 'tasks/t1')))
+    await assertSucceeds(deleteDoc(doc(db, 'task_items/i1')))
+  })
+
+  it('cria e apaga admins/x, lista admins e lê o próprio', async () => {
+    const db = admin()
+    await assertSucceeds(setDoc(doc(db, 'admins/x'), { person_id: 'p3' }))
+    await assertSucceeds(getDocs(collection(db, 'admins')))
+    await assertSucceeds(getDoc(doc(db, 'admins/admin-uid')))
+    await assertSucceeds(deleteDoc(doc(db, 'admins/x')))
+  })
+
+  it('apaga uma pessoa que é admin e uma pessoa comum', async () => {
+    await assertSucceeds(deleteDoc(doc(admin(), 'people/p2')))
+    await assertSucceeds(deleteDoc(doc(admin(), 'people/p3')))
+  })
+})
+
+describe('dono raiz e admins', () => {
+  it('cria e apaga admins/x, lista admins e apaga pessoa admin', async () => {
+    const db = owner()
+    await assertSucceeds(setDoc(doc(db, 'admins/x'), { person_id: 'p3' }))
+    await assertSucceeds(getDocs(collection(db, 'admins')))
+    await assertSucceeds(deleteDoc(doc(db, 'admins/x')))
+    await assertSucceeds(deleteDoc(doc(db, 'people/p2')))
+  })
+})
+
+describe('admins: membro, estranho e sem login', () => {
+  for (const [label, db] of [['membro', member], ['logado sem ser membro', stranger], ['sem login', anon]] as const) {
+    it(`${label} não lê nem escreve em admins`, async () => {
+      await assertFails(getDoc(doc(db(), 'admins/admin-uid')))
+      await assertFails(getDocs(collection(db(), 'admins')))
+      await assertFails(setDoc(doc(db(), 'admins/x'), { person_id: 'p1' }))
+      await assertFails(updateDoc(doc(db(), 'admins/admin-uid'), { x: 1 }))
+      await assertFails(deleteDoc(doc(db(), 'admins/admin-uid')))
     })
   }
 })
