@@ -1,14 +1,18 @@
 import { Link } from 'react-router'
 import { fibonacciPoint, LEVEL_COLOR } from '@/fx/constellation/graph'
 import type { Graph } from '@/fx/constellation/graph'
+import type { StatusLevel } from '@/lib/types'
 
 const W = 640
 const H = 320
 
-/** Lista discreta e navegável por teclado, usada também sob a cena 3D. */
+/** Lista de links só para leitor de tela e teclado: oculta, e aparece quando um link recebe foco. */
 export function ProjectLinks({ graph }: { graph: Graph }) {
   return (
-    <nav aria-label="Projetos da constelação" className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+    <nav
+      aria-label="Projetos da constelação"
+      className="sr-only focus-within:not-sr-only focus-within:mt-3 focus-within:flex focus-within:flex-wrap focus-within:gap-x-4 focus-within:gap-y-1"
+    >
       {graph.nodes.map((n) => (
         <Link
           key={n.id}
@@ -19,6 +23,20 @@ export function ProjectLinks({ graph }: { graph: Graph }) {
         </Link>
       ))}
     </nav>
+  )
+}
+
+/** Legenda das cores e das linhas, abaixo da constelação. */
+export function ConstellationLegend() {
+  const dot = (level: StatusLevel) => (
+    <span aria-hidden="true" style={{ color: LEVEL_COLOR[level] }}>
+      ●
+    </span>
+  )
+  return (
+    <p data-legend className="mt-3 font-mono text-[11px] text-muted">
+      {dot('on')} em andamento {dot('half')} fase inicial {dot('off')} a definir · linhas = pessoas em comum
+    </p>
   )
 }
 
@@ -83,6 +101,7 @@ export function ConstellationFallback({ graph, onOpen }: { graph: Graph; onOpen:
   return (
     <div>
       <ConstellationSvg graph={graph} onOpen={onOpen} />
+      <ConstellationLegend />
       <ProjectLinks graph={graph} />
     </div>
   )
