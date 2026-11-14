@@ -26,6 +26,7 @@ function SceneView({ graph, onOpen, onFail }: { graph: ReturnType<typeof buildGr
   const lastPointer = useRef<string>('mouse')
   const touched = useRef<string | null>(null) // ponto já tocado uma vez: o segundo toque abre
   const [ready, setReady] = useState(false)
+  const tapTimer = useRef(0)
   const graphRef = useRef(graph)
   const failRef = useRef(onFail)
   useEffect(() => {
@@ -67,7 +68,16 @@ function SceneView({ graph, onOpen, onFail }: { graph: ReturnType<typeof buildGr
 
   useEffect(() => {
     scene.current?.setGraph(graph)
+    // O grafo mudou: o "primeiro toque" não vale mais para o ponto antigo.
+    dismissTap()
   }, [graph])
+
+  function dismissTap() {
+    window.clearTimeout(tapTimer.current)
+    touched.current = null
+    scene.current?.setHover(null)
+  }
+  useEffect(() => () => window.clearTimeout(tapTimer.current), [])
 
   const local = (e: React.PointerEvent | React.MouseEvent) => {
     const r = e.currentTarget.getBoundingClientRect()
@@ -113,9 +123,12 @@ function SceneView({ graph, onOpen, onFail }: { graph: ReturnType<typeof buildGr
             // Toque: o primeiro mostra o rótulo, o segundo no mesmo ponto abre.
             if (id && id === touched.current) onOpen(id)
             else {
+              window.clearTimeout(tapTimer.current)
               touched.current = id
               scene.current?.setHover(id)
               if (!id) setLabelId(null)
+              // Sem segundo toque, o rótulo some e o ponto volta a exigir dois toques.
+              else tapTimer.current = window.setTimeout(dismissTap, 4000)
             }
           }}
         />
