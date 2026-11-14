@@ -144,3 +144,17 @@ describe('usePointerGlow', () => {
     expect(card.style.getPropertyValue('--ry')).toBe('')
   })
 })
+
+describe('checkbox', () => {
+  it('o traço só se desenha depois de o usuário marcar, não quando já nasce marcado', async () => {
+    const { Checkbox } = await import('@/components/ui/checkbox')
+    const { default: userEvent } = await import('@testing-library/user-event')
+    render(<Checkbox defaultChecked aria-label="a" />)
+    expect(document.querySelector('.check-stroke')).toBeNull()
+    expect(document.querySelector('[data-slot="checkbox-indicator"] path')).not.toBeNull()
+    cleanup()
+    render(<Checkbox aria-label="b" />)
+    await userEvent.click(screen.getByRole('checkbox', { name: 'b' }))
+    expect(document.querySelector('.check-stroke')).not.toBeNull()
+  })
+})

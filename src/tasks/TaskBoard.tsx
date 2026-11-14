@@ -35,7 +35,7 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
                   layoutId={animate ? `task-${t.id}` : undefined}
                   initial={animate ? { opacity: 0 } : false}
                   animate={{ opacity: 1 }}
-                  exit={animate ? { opacity: 0, transition: { duration: 0.1 } } : undefined}
+                  exit={animate ? { opacity: 0, pointerEvents: 'none', transition: { duration: 0.1 } } : undefined}
                   transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
                 >
                   <button

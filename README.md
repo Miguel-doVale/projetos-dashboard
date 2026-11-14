@@ -33,7 +33,7 @@ Membros veem tudo e só podem marcar itens e mudar o status das tarefas; criar, 
 
 1. Importe o repositório na Vercel. Framework: Vite; comando de build `npm run build`; pasta de saída `dist`. O `vercel.json` cuida da reescrita para `index.html`, do `X-Robots-Tag: noindex, nofollow` e do cache.
 2. Em Settings, Environment Variables, cadastre as cinco variáveis: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` e `VITE_OWNER_UID`.
-3. Depois do primeiro deploy, adicione o domínio `*.vercel.app` do projeto (e o domínio próprio, se houver) em Firebase Console, Authentication, Settings, Authorized domains. Sem isso o login falha.
+3. Depois do primeiro deploy, adicione o domínio exato do deploy (por exemplo `meu-projeto.vercel.app`), mais os domínios de preview que forem usados e o domínio próprio, se houver, em Firebase Console, Authentication, Settings, Authorized domains. Esse campo não aceita curinga (`*.vercel.app`). Sem isso o login falha.
 
 ## Publicar as regras
 

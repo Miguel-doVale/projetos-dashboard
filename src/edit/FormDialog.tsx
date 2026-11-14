@@ -30,7 +30,13 @@ export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmi
     observer.current?.disconnect()
     observer.current = null
     if (!form) return
-    observer.current = new MutationObserver(() => setChanged(true))
+    observer.current = new MutationObserver((records) => {
+      // A mensagem de erro e o texto do botão ("Salvando…") são do próprio formulário, não do usuário.
+      const own = (n: Node) => n instanceof Element && (n.matches('[role="alert"]') || n.closest('[role="alert"], button') !== null)
+      const ownText = (r: MutationRecord) => r.target instanceof Element && r.target.closest('[role="alert"], button') !== null
+      const user = records.some((r) => !ownText(r) && ![...r.addedNodes, ...r.removedNodes].every(own))
+      if (user) setChanged(true)
+    })
     observer.current.observe(form, { childList: true, subtree: true })
   }, [])
   useEffect(() => () => observer.current?.disconnect(), [])

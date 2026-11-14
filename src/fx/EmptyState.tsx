@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { motion } from 'motion/react'
+import { inView, motion } from 'motion/react'
 import { motionEnabled } from '@/lib/motion'
 
 // 4 pontos ligados por linhas finas, no estilo da constelação.
@@ -15,11 +16,26 @@ const LINES: [number, number][] = [
   [2, 3],
 ]
 
-/** Tela vazia: ilustração pequena que flutua devagar acima do texto. */
+/**
+ * Tela vazia: ilustração pequena que flutua devagar acima do texto, e só enquanto está na tela.
+ * `compact` é a versão estática, para painéis e diálogos.
+ */
 export function EmptyState({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
-  const animate = motionEnabled()
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  const canAnimate = !compact && motionEnabled() && typeof IntersectionObserver !== 'undefined'
+  useEffect(() => {
+    const el = ref.current
+    if (!canAnimate || !el) return
+    return inView(el, () => {
+      setVisible(true)
+      return () => setVisible(false)
+    })
+  }, [canAnimate])
+  const animate = canAnimate && visible
   return (
     <div
+      ref={ref}
       data-empty-state
       className={`flex flex-col items-center gap-3 rounded-xl border border-border bg-surface-raised text-center text-sm text-muted ${compact ? 'px-3 py-4' : 'px-4 py-8'}`}
     >
@@ -27,8 +43,7 @@ export function EmptyState({ children, compact = false }: { children: ReactNode;
         aria-hidden="true"
         viewBox="0 0 124 60"
         className={compact ? 'h-9 w-[75px]' : 'h-[60px] w-[124px]'}
-        animate={animate ? { y: [0, -4, 0] } : undefined}
-        transition={{ duration: 6, ease: 'easeInOut', repeat: Infinity }}
+        animate={animate ? { y: [0, -4, 0], transition: { duration: 6, ease: 'easeInOut', repeat: Infinity } } : { y: 0, transition: { duration: 0.3 } }}
       >
         {LINES.map(([a, b]) => (
           <line
@@ -49,8 +64,11 @@ export function EmptyState({ children, compact = false }: { children: ReactNode;
             cy={y}
             r={i === 1 ? 3.5 : 2.5}
             fill="#9cddbd"
-            animate={animate ? { opacity: [1, 0.45, 1] } : undefined}
-            transition={{ duration: 3.5 + i * 0.7, ease: 'easeInOut', repeat: Infinity, delay: i * 0.5 }}
+            animate={
+              animate
+                ? { opacity: [1, 0.45, 1], transition: { duration: 3.5 + i * 0.7, ease: 'easeInOut', repeat: Infinity, delay: i * 0.5 } }
+                : { opacity: 1, transition: { duration: 0.3 } }
+            }
           />
         ))}
       </motion.svg>

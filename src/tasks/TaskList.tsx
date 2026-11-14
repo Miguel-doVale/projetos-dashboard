@@ -49,7 +49,7 @@ export function TaskList({ tasks, onOpen, showProject = true }: Props) {
             layout={animate ? 'position' : false}
             initial={animate ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
-            exit={animate ? { opacity: 0, transition: { duration: 0.12 } } : undefined}
+            exit={animate ? { opacity: 0, pointerEvents: 'none', transition: { duration: 0.12 } } : undefined}
             transition={{ duration: 0.18, ease: 'easeOut' }}
           >
             <button

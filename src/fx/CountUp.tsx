@@ -19,7 +19,12 @@ export function CountUp({ value, className }: { value: string; className?: strin
 
   useLayoutEffect(() => {
     const el = ref.current
-    if (!el || counted.current) return
+    if (!el) return
+    // Depois da primeira contagem (ou no meio dela) o valor novo entra direto.
+    if (counted.current) {
+      el.textContent = value
+      return
+    }
     if (!motionEnabled() || typeof IntersectionObserver === 'undefined' || !/\d/.test(value)) return
     el.textContent = partial(value, 0)
     let controls: ReturnType<typeof animate> | null = null
@@ -40,7 +45,6 @@ export function CountUp({ value, className }: { value: string; className?: strin
     return () => {
       stop()
       controls?.stop()
-      el.textContent = value
     }
   }, [value])
 

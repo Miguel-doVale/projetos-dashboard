@@ -16,6 +16,8 @@ function finePointer(): boolean {
 export function usePointerGlow({ tilt = true }: { tilt?: boolean } = {}) {
   return useMemo(
     () => ({
+      // Marca os cards inclinados para o CSS; sem movimento nada é aplicado.
+      'data-fx-tilt': tilt && motionEnabled() ? '' : undefined,
       onPointerMove(e: PointerEvent<HTMLElement>) {
         if (e.pointerType === 'touch' || !motionEnabled() || !finePointer()) return
         const el = e.currentTarget
