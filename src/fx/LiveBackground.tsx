@@ -1,12 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { clampDots, stepDot } from '@/fx/dots'
+import type { Dot } from '@/fx/dots'
 import { motionEnabled } from '@/lib/motion'
-
-interface Dot {
-  x: number
-  y: number
-  vx: number
-  vy: number
-}
 
 const LINK_DISTANCE = 150
 const MAX_LINE_ALPHA = 0.1
@@ -68,6 +63,7 @@ export function LiveBackground() {
       canvas.height = Math.round(height * ratio)
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
       if (wasEmpty || (width < 720) !== (dots.length <= 30)) seed()
+      else clampDots(dots, width, height)
       draw()
     }
 
@@ -75,10 +71,7 @@ export function LiveBackground() {
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
       for (const d of dots) {
-        d.x += d.vx * dt
-        d.y += d.vy * dt
-        if (d.x < 0 || d.x > width) d.vx *= -1
-        if (d.y < 0 || d.y > height) d.vy *= -1
+        stepDot(d, dt, width, height)
       }
       draw()
       raf = requestAnimationFrame(tick)

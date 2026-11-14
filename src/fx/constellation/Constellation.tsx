@@ -27,9 +27,11 @@ function SceneView({ graph, onOpen, onFail }: { graph: ReturnType<typeof buildGr
   const touched = useRef<string | null>(null) // ponto já tocado uma vez: o segundo toque abre
   const [ready, setReady] = useState(false)
   const graphRef = useRef(graph)
-  graphRef.current = graph
   const failRef = useRef(onFail)
-  failRef.current = onFail
+  useEffect(() => {
+    graphRef.current = graph
+    failRef.current = onFail
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -81,6 +83,7 @@ function SceneView({ graph, onOpen, onFail }: { graph: ReturnType<typeof buildGr
           ref={canvas}
           role="img"
           aria-label="Constelação dos projetos"
+          aria-hidden={ready ? undefined : true}
           className={`absolute inset-0 h-full w-full touch-pan-y ${hover ? 'cursor-pointer' : ''}`}
           onPointerDown={(e) => {
             lastPointer.current = e.pointerType
@@ -89,14 +92,14 @@ function SceneView({ graph, onOpen, onFail }: { graph: ReturnType<typeof buildGr
             const p = local(e)
             scene.current?.setPointer((p.x / p.w) * 2 - 1, (p.y / p.h) * 2 - 1)
             if (e.pointerType !== 'mouse') return
-            const id = scene.current?.pick(p.x, p.y) ?? null
-            scene.current?.setHover(id)
-            setHover(id !== null)
+            scene.current?.setProbe(p.x, p.y)
+            setHover(scene.current?.pick(p.x, p.y) != null)
           }}
           onPointerLeave={(e) => {
             scene.current?.setPointer(0, 0)
             // O toque dispara pointerleave ao soltar o dedo; o rótulo tocado deve ficar.
             if (e.pointerType !== 'mouse') return
+            scene.current?.setProbe(null)
             scene.current?.setHover(null)
             setHover(false)
           }}

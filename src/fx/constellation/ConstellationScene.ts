@@ -83,6 +83,7 @@ export class ConstellationScene {
   private pointer = { x: 0, y: 0 }
   private eased = { x: 0, y: 0 }
   private hover: string | null = null
+  private probe: { x: number; y: number } | null = null
   private raf = 0
   private last = 0
   private tabVisible = true
@@ -174,6 +175,14 @@ export class ConstellationScene {
     if (!id && !this.autoLabel) this.onLabelMove?.(null)
   }
 
+  /** Posição do mouse sobre o canvas (px) ou null; o nó sob ela é refeito a cada quadro, mesmo com o mouse parado. */
+  setProbe(x: number, y: number): void
+  setProbe(x: null): void
+  setProbe(x: number | null, y?: number) {
+    this.probe = x === null ? null : { x, y: y ?? 0 }
+    if (this.probe) this.hover = this.pick(this.probe.x, this.probe.y)
+  }
+
   /** Liga o rótulo do projeto mais próximo da câmera, sem precisar de hover (telas com mouse). */
   setAutoLabel(on: boolean) {
     this.autoLabel = on
@@ -191,7 +200,7 @@ export class ConstellationScene {
       if (!p) return
       const d = Math.hypot(p.x - x, p.y - y)
       if (d > PICK_RADIUS) return
-      const score = d + p.depth * 6 // nós da frente (depth menor) vencem empates
+      const score = d + p.dist * 12 // nós mais perto da câmera vencem empates
       if (score < bestScore) {
         bestScore = score
         best = id
@@ -222,6 +231,7 @@ export class ConstellationScene {
     this.lineMaterials.clear()
     this.haloMaterials.clear()
     this.renderer?.dispose()
+    this.renderer?.forceContextLoss()
     this.renderer = null
     this.canvas = null
     this.onLabelMove = null
@@ -316,13 +326,15 @@ export class ConstellationScene {
     return best
   }
 
-  private project(mesh: Mesh): { x: number; y: number; depth: number } | null {
-    this.tmp.setFromMatrixPosition(mesh.matrixWorld).project(this.camera)
+  private project(mesh: Mesh): { x: number; y: number; dist: number } | null {
+    this.tmp.setFromMatrixPosition(mesh.matrixWorld)
+    const dist = this.tmp.distanceTo(this.camera.position)
+    this.tmp.project(this.camera)
     if (this.tmp.z > 1) return null
     return {
       x: ((this.tmp.x + 1) / 2) * this.width,
       y: ((1 - this.tmp.y) / 2) * this.height,
-      depth: this.tmp.z,
+      dist,
     }
   }
 
@@ -365,6 +377,10 @@ export class ConstellationScene {
     this.tilt.rotation.y = this.eased.x * 0.35
     this.tilt.rotation.x = 0.28 + this.eased.y * 0.22
     this.renderFrame()
+    if (this.probe) {
+      const id = this.pick(this.probe.x, this.probe.y)
+      if (id !== this.hover) this.setHover(id)
+    }
     const labelId = this.hover ?? (this.autoLabel ? this.nearest() : null)
     const n = labelId ? this.nodes.get(labelId) : undefined
     const p = n ? this.project(n.mesh) : null

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading } from '@/blocks/Sections'
@@ -18,6 +18,7 @@ const Constellation = lazy(() => import('@/fx/constellation/Constellation'))
 export default function Overview() {
   const { access } = useAuth()
   const { projects, tasks, people, members, memberUids } = useData()
+  const graph = useMemo(() => buildGraph(projects, members), [projects, members])
   const navigate = useNavigate()
   const glow = usePointerGlow({ tilt: false }) // as células ficam num contêiner com overflow-hidden
   const open = (id: string) => navigate(`/projetos/${id}`)
@@ -32,7 +33,7 @@ export default function Overview() {
           </SplitTitle>
         </header>
         {projects.length > 0 && (
-          <Suspense fallback={<ConstellationFallback graph={buildGraph(projects, members)} onOpen={open} />}>
+          <Suspense fallback={<ConstellationFallback graph={graph} onOpen={open} />}>
             <Constellation projects={projects} members={members} onOpen={open} />
           </Suspense>
         )}
