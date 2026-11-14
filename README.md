@@ -29,16 +29,15 @@ O dono é o usuário cujo UID está em `firestore.rules`. Para dar acesso a outr
 
 Membros veem tudo e só podem marcar itens e mudar o status das tarefas; criar, editar e apagar é só do dono.
 
-## Publicar
+## Publicar na Vercel
 
-Site (Firebase Hosting):
+1. Importe o repositório na Vercel. Framework: Vite; comando de build `npm run build`; pasta de saída `dist`. O `vercel.json` cuida da reescrita para `index.html`, do `X-Robots-Tag: noindex, nofollow` e do cache.
+2. Em Settings, Environment Variables, cadastre as cinco variáveis: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` e `VITE_OWNER_UID`.
+3. Depois do primeiro deploy, adicione o domínio `*.vercel.app` do projeto (e o domínio próprio, se houver) em Firebase Console, Authentication, Settings, Authorized domains. Sem isso o login falha.
 
-```bash
-npm run build
-npx firebase deploy --only hosting --project projetos-dashboard
-```
+## Publicar as regras
 
-`firebase.json` tem só o Hosting, então um `firebase deploy` sem filtro não sobrescreve as regras. A configuração do Firestore e do emulador fica em `firebase.emulator.json` (usada por `npm run test:rules`).
+O repositório não tem `firebase.json` de publicação: a configuração do Firestore e do emulador fica em `firebase.emulator.json` (usada por `npm run test:rules`).
 
 Regras do Firestore: faça uma cópia de `firestore.rules` fora do repositório, troque `OWNER_UID_PLACEHOLDER` pelo UID do dono e publique essa cópia com um `firebase.json` temporário que aponte para ela (`{"firestore": {"rules": "caminho/da/copia.rules"}}`) e `npx firebase deploy --only firestore:rules --project projetos-dashboard`. Nunca grave o UID real no arquivo versionado: os testes das regras dependem do placeholder.
 

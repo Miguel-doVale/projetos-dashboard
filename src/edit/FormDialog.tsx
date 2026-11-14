@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,16 +21,19 @@ export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmi
   const [saving, setSaving] = useState(false)
   const [changed, setChanged] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const formRef = useRef<HTMLFormElement>(null)
+  const observer = useRef<MutationObserver | null>(null)
 
   // Mexer em campo (input/change) ou em linhas da lista (adicionar/remover) conta como alteração.
-  useEffect(() => {
-    const form = formRef.current
+  // O formulário vive no Portal do Radix e só existe depois do primeiro efeito, então o
+  // observador se liga por callback ref, quando o nó aparece de fato.
+  const formRef = useCallback((form: HTMLFormElement | null) => {
+    observer.current?.disconnect()
+    observer.current = null
     if (!form) return
-    const observer = new MutationObserver(() => setChanged(true))
-    observer.observe(form, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    observer.current = new MutationObserver(() => setChanged(true))
+    observer.current.observe(form, { childList: true, subtree: true })
   }, [])
+  useEffect(() => () => observer.current?.disconnect(), [])
 
   function requestClose() {
     if (saving) return

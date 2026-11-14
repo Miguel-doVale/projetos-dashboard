@@ -476,6 +476,17 @@ describe('fechar o formulário', () => {
   })
 })
 
+describe('fechar o formulário (linhas)', () => {
+  it('adicionar uma linha conta como alteração: Esc pede confirmação', async () => {
+    const u = user()
+    go('/projetos')
+    await u.click(await screen.findByRole('button', { name: 'Novo projeto' }))
+    await u.click(screen.getByRole('button', { name: 'Adicionar fato' }))
+    await u.keyboard('{Escape}')
+    expect(await screen.findByText('Descartar as alterações?')).toBeInTheDocument()
+  })
+})
+
 describe('sprint', () => {
   it('mostra as datas das sprints como dd/mm/aaaa', async () => {
     const prev = h.data as { sprints: unknown[] }
