@@ -11,6 +11,10 @@ function Checkbox({
 }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
   // O traço só se desenha quando a caixa é marcada pelo usuário, não quando já nasce marcada.
   const [toggled, setToggled] = React.useState(false)
+  // Se a caixa é desmarcada de fora, a próxima marcação só desenha se vier do usuário.
+  React.useEffect(() => {
+    if (props.checked === false) setToggled(false)
+  }, [props.checked])
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"

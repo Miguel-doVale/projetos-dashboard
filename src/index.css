@@ -129,12 +129,6 @@
   .fx-card[data-fx-tilt]:hover {
     transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   }
-  /* Só nos cards inclinados (têm folga ao redor): cobre a borda que se afasta, para o card não piscar na beirada. */
-  .fx-card[data-fx-tilt]:hover::after {
-    content: '';
-    position: absolute;
-    inset: -4px;
-  }
   /* Volta suave ao sair; durante o movimento a transformação acompanha o cursor sem atraso. */
   .fx-card[data-fx-rest] {
     transition:
