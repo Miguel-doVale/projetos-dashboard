@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/AuthProvider'
 import { importSeed } from '@/data/importSeed'
 import { useData } from '@/data/DataProvider'
 
-/** Só para o dono e só com o banco vazio: carrega o conteúdo inicial do levantamento. */
+/** Só para o dono e só com o banco vazio. O botão existe apenas no ambiente de desenvolvimento. */
 export function ImportSeedButton() {
   const { access } = useAuth()
   const { projects, reload } = useData()
@@ -12,6 +12,13 @@ export function ImportSeedButton() {
   const [error, setError] = useState<string | null>(null)
 
   if (access !== 'owner' || projects.length > 0) return null
+  if (!import.meta.env.DEV) {
+    return (
+      <p className="mb-10 text-sm text-muted">
+        O banco está vazio. Rode o app localmente (npm run dev) para importar o conteúdo inicial, ou crie os projetos por aqui.
+      </p>
+    )
+  }
 
   async function run() {
     setBusy(true)

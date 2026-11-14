@@ -80,7 +80,7 @@ function block(b: LeafBlock): Chunk | null {
     case 'decisions':
       return b.items?.length
         ? {
-            text: b.items.map((d, i) => `${i + 1}. **${inline(d.label)}** ${inline(d.text)}`).join('\n'),
+            text: b.items.map((d, i) => `${i + 1}. ${d.label?.trim() ? `**${inline(d.label)}** ` : ''}${inline(d.text)}`).join('\n'),
             list: true,
           }
         : null

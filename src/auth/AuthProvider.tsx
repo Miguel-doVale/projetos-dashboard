@@ -10,6 +10,9 @@ interface AuthState {
   loading: boolean
   email: string | null
   access: Access
+  /** A leitura de `members/{uid}` falhou (rede, início lento): o acesso é desconhecido, não negado. */
+  accessError: boolean
+  retryAccess(): void
   signIn(email: string, password: string): Promise<string | null>
   signOut(): Promise<void>
 }
@@ -28,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionReady, setSessionReady] = useState(false)
   const [access, setAccess] = useState<Access>('none')
   const [accessFor, setAccessFor] = useState<string | null>(null)
+  const [accessError, setAccessError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -51,12 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ao sair, o nível guardado é descartado.
       setAccess('none')
       setAccessFor(null)
+      setAccessError(false)
       return
     }
     let active = true
     const settle = (next: Access) => {
       if (!active) return
       setAccess(next)
+      setAccessError(false)
+      setAccessFor(uid)
+    }
+    const fail = () => {
+      if (!active) return
+      setAccess('none')
+      setAccessError(true)
       setAccessFor(uid)
     }
     if (uid === import.meta.env.VITE_OWNER_UID) {
@@ -64,13 +77,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       getDoc(doc(db, 'members', uid)).then(
         (snap) => settle(snap.exists() ? 'member' : 'none'),
-        () => settle('none'),
+        (error) => {
+          const code = (error as { code?: string } | null)?.code
+          // Sem permissão para ler o próprio documento = não é membro. Qualquer outro erro é incerteza.
+          if (code === 'permission-denied' || code === 'firestore/permission-denied') settle('none')
+          else fail()
+        },
       )
     }
     return () => {
       active = false
     }
-  }, [uid])
+  }, [uid, attempt])
+
+  const retryAccess = useCallback(() => {
+    setAccessError(false)
+    setAccessFor(null)
+    setAttempt((n) => n + 1)
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
@@ -93,10 +117,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading: !sessionReady || (uid !== null && accessFor !== uid),
       email: user?.email ?? null,
       access: uid ? access : 'none',
+      accessError: uid ? accessError : false,
+      retryAccess,
       signIn,
       signOut,
     }),
-    [sessionReady, uid, accessFor, user, access, signIn, signOut],
+    [sessionReady, uid, accessFor, user, access, accessError, retryAccess, signIn, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

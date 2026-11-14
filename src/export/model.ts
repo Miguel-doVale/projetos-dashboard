@@ -1,4 +1,4 @@
-import { TASK_STATUS_LABEL, progressOf, teamOf } from '@/lib/derive'
+import { TASK_STATUS_LABEL, factsOf, progressOf, teamOf } from '@/lib/derive'
 import type { DataState } from '@/data/DataProvider'
 import type { Project, Task } from '@/lib/types'
 
@@ -43,6 +43,8 @@ export interface ExportDoc {
   /** Verdadeiro na exportação de todos os projetos (inclui a visão geral). */
   all?: boolean
 }
+
+export { factsOf }
 
 export const STATUS_ORDER: Task['status'][] = ['todo', 'doing', 'done']
 
@@ -103,11 +105,6 @@ export function groupTasks(tasks: ExportTask[]): { status: Task['status']; label
     label: TASK_STATUS_LABEL[status],
     tasks: tasks.filter((t) => t.status === status),
   })).filter((g) => g.tasks.length > 0)
-}
-
-/** Facts do projeto mais o prazo, como na página do projeto. */
-export function factsOf(p: Project): { label: string; value: string }[] {
-  return [...p.facts, ...(p.deadline ? [{ label: 'Prazo', value: p.deadline }] : [])]
 }
 
 /**

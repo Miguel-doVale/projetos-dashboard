@@ -101,7 +101,7 @@ function blockHtml(b: LeafBlock): string {
         : ''
     case 'decisions':
       return b.items.length
-        ? `<ol>${b.items.map((d) => `<li><strong>${esc(d.label)}</strong> ${esc(d.text)}</li>`).join('')}</ol>`
+        ? `<ol>${b.items.map((d) => `<li>${d.label?.trim() ? `<strong>${esc(d.label)}</strong> ` : ''}${esc(d.text)}</li>`).join('')}</ol>`
         : ''
     default:
       return ''

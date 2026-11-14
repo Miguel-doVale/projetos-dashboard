@@ -163,6 +163,18 @@ describe('toMarkdown', () => {
     expect(md).toContain('gerado em 13/11/2026')
   })
 
+  it('decisão com rótulo vazio não gera ****', () => {
+    const d = emptyDoc()
+    d.projects[0].project.sections = [
+      { blocks: [{ type: 'decisions', items: [{ label: '', text: 'só texto' }, { label: 'X', text: 'com rótulo' }] }] },
+    ]
+    const md = toMarkdown(d)
+    expect(md).not.toContain('****')
+    expect(md).toContain('1. só texto')
+    expect(md).toContain('2. **X** com rótulo')
+    expect(dark(d)).not.toContain('<strong></strong>')
+  })
+
   it('escapa | em tabelas e achata quebras de linha', () => {
     const md = toMarkdown(doc('p1'))
     expect(md).toContain('| A\\|B | C |')

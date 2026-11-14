@@ -2,10 +2,13 @@ import { collection, doc, getDocs, limit, query } from 'firebase/firestore'
 import { runBatched } from '@/lib/api'
 import type { WriteOp } from '@/lib/api'
 import { db } from '@/lib/firebase'
-import { seedData } from '@/data/seedData'
 
 /** Grava o conteúdo inicial, resolvendo as referências (número do projeto, nome da pessoa) para ids novos. */
 export async function importSeed(): Promise<void> {
+  // O conteúdo inicial existe só no build de desenvolvimento: em produção o bundler descarta o import abaixo.
+  if (!import.meta.env.DEV) throw new Error('A importação inicial só funciona no ambiente de desenvolvimento.')
+  const { seedData } = await import('./seedData')
+
   const existing = await getDocs(query(collection(db, 'projects'), limit(1)))
   if (!existing.empty) throw new Error('O banco já tem conteúdo.')
 

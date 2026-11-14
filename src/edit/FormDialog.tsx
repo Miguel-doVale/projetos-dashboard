@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -19,6 +19,24 @@ interface Props {
 export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmit, onClose, children }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [changed, setChanged] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Mexer em campo (input/change) ou em linhas da lista (adicionar/remover) conta como alteração.
+  useEffect(() => {
+    const form = formRef.current
+    if (!form) return
+    const observer = new MutationObserver(() => setChanged(true))
+    observer.observe(form, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
+
+  function requestClose() {
+    if (saving) return
+    if (changed) setConfirming(true)
+    else onClose()
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -35,17 +53,28 @@ export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmi
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
-      <DialogContent className="max-h-[90vh] gap-5 overflow-y-auto sm:max-w-2xl">
+    <>
+    <Dialog open onOpenChange={(open) => !open && requestClose()}>
+      <DialogContent
+        className="max-h-[90vh] gap-5 overflow-y-auto sm:max-w-2xl"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-[650]">{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : <DialogDescription className="sr-only">{title}</DialogDescription>}
         </DialogHeader>
-        <form onSubmit={(e) => void submit(e)} noValidate className="grid gap-4">
+        <form
+          ref={formRef}
+          onSubmit={(e) => void submit(e)}
+          onInput={() => setChanged(true)}
+          onChange={() => setChanged(true)}
+          noValidate
+          className="grid gap-4"
+        >
           {children}
           <FormError message={error} />
           <DialogFooter>
-            <Button type="button" variant="ghost" disabled={saving} onClick={onClose}>
+            <Button type="button" variant="ghost" disabled={saving} onClick={requestClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
@@ -55,5 +84,22 @@ export function FormDialog({ title, description, submitLabel = 'Salvar', onSubmi
         </form>
       </DialogContent>
     </Dialog>
+    <Dialog open={confirming} onOpenChange={setConfirming}>
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Descartar as alterações?</DialogTitle>
+          <DialogDescription>O que você digitou será perdido.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
+            Continuar editando
+          </Button>
+          <Button type="button" variant="destructive" onClick={onClose}>
+            Descartar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

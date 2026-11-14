@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { overviewStats, progressOf, projectsOf, teamOf } from '@/lib/derive'
+import { factsOf, overviewStats, progressOf, projectsOf, teamOf } from '@/lib/derive'
 import type { Person, Project, ProjectMember, Task } from '@/lib/types'
 
 const person = (id: string, name: string, uid: string | null = null): Person => ({
@@ -51,5 +51,35 @@ describe('derive', () => {
     expect(get('Tarefas feitas')).toBe('1/2')
     expect(get('Com prazo definido')).toBe('1')
     expect(get('Pessoas com acesso')).toBe('1')
+  })
+})
+
+describe('factsOf', () => {
+  const base = project('p', 'projeto', null)
+  it('sem prazo preenchido, devolve os facts como estão', () => {
+    const facts = [{ label: 'Prazo', value: 'a definir' }, { label: 'Local', value: 'Sala 1' }]
+    expect(factsOf({ ...base, facts, deadline: null })).toEqual(facts)
+    expect(factsOf({ ...base, facts, deadline: '  ' })).toEqual(facts)
+  })
+  it('prazo preenchido substitui o fact "Prazo" (sem repetir, sem diferenciar caixa)', () => {
+    const facts = [{ label: ' prazo ', value: 'antigo' }, { label: 'Local', value: 'Sala 1' }]
+    const out = factsOf({ ...base, facts, deadline: 'dez/2026' })
+    expect(out).toHaveLength(2)
+    expect(out[0].value).toBe('dez/2026')
+    expect(out.filter((f) => f.label.trim().toLowerCase() === 'prazo')).toHaveLength(1)
+  })
+  it('sem fact "Prazo", acrescenta o prazo no fim', () => {
+    expect(factsOf({ ...base, facts: [{ label: 'Local', value: 'Sala 1' }], deadline: 'dez/2026' })).toEqual([
+      { label: 'Local', value: 'Sala 1' },
+      { label: 'Prazo', value: 'dez/2026' },
+    ])
+  })
+})
+
+describe('overviewStats sem acesso do dono', () => {
+  it('omite "Pessoas com acesso" quando includeAccess é falso', () => {
+    const labels = overviewStats([], [], [], [], false).map((s) => s.label)
+    expect(labels).not.toContain('Pessoas com acesso')
+    expect(overviewStats([], [], [], []).map((s) => s.label)).toContain('Pessoas com acesso')
   })
 })

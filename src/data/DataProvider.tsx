@@ -67,6 +67,22 @@ async function fetchTable<T>(table: TableName): Promise<T[]> {
   return rows as unknown as T[]
 }
 
+/** Sprints por início (sem data por último), depois pelo nome. */
+export function sortSprints(sprints: Sprint[]): Sprint[] {
+  return [...sprints].sort((a, b) => {
+    if (a.starts_on !== b.starts_on) {
+      if (!a.starts_on) return 1
+      if (!b.starts_on) return -1
+      return a.starts_on.localeCompare(b.starts_on)
+    }
+    return a.name.localeCompare(b.name, 'pt-BR')
+  })
+}
+
+export function sortPeople(people: Person[]): Person[] {
+  return [...people].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+}
+
 async function fetchMemberUids(): Promise<string[]> {
   try {
     const snap = await getDocs(collection(db, 'members'))
@@ -107,7 +123,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Resposta fora de ordem: só a mais recente vale.
       if (!mounted.current || run !== latest.current) return
       hasData.current = true
-      setData({ people, projects, members, sprints, tasks, items, pages, memberUids })
+      setData({
+        people: sortPeople(people),
+        projects,
+        members,
+        sprints: sortSprints(sprints),
+        tasks,
+        items,
+        pages,
+        memberUids,
+      })
       setLoaded(true)
       setLoading(false)
     } catch {

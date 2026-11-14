@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { fromDrafts, toDrafts } from '@/edit/SectionsEditor'
@@ -439,7 +439,54 @@ describe('formulário durante o envio', () => {
   })
 })
 
+describe('fechar o formulário', () => {
+  it('sem alterações, Esc e Cancelar fecham direto', async () => {
+    const u = user()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Nova pessoa' }))
+    await u.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await u.click(screen.getByRole('button', { name: 'Nova pessoa' }))
+    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('com alterações, Esc e Cancelar pedem confirmação; clique fora não fecha', async () => {
+    const u = user()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Nova pessoa' }))
+    await u.type(screen.getByLabelText('Nome'), 'Carla')
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]')!
+    fireEvent.pointerDown(overlay)
+    fireEvent.pointerUp(overlay)
+    fireEvent.click(overlay)
+    expect(screen.getByLabelText('Nome')).toHaveValue('Carla')
+    expect(screen.queryByText('Descartar as alterações?')).not.toBeInTheDocument()
+
+    await u.keyboard('{Escape}')
+    expect(await screen.findByText('Descartar as alterações?')).toBeInTheDocument()
+    await u.click(screen.getByRole('button', { name: 'Continuar editando' }))
+    await waitFor(() => expect(screen.queryByText('Descartar as alterações?')).not.toBeInTheDocument())
+    expect(screen.getByLabelText('Nome')).toHaveValue('Carla')
+
+    await u.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(await screen.findByText('Descartar as alterações?')).toBeInTheDocument()
+    await u.click(screen.getByRole('button', { name: 'Descartar' }))
+    await waitFor(() => expect(screen.queryByLabelText('Nome')).not.toBeInTheDocument())
+  })
+})
+
 describe('sprint', () => {
+  it('mostra as datas das sprints como dd/mm/aaaa', async () => {
+    const prev = h.data as { sprints: unknown[] }
+    h.data = { ...prev, sprints: [{ id: 's1', created_at: null, name: 'S1', starts_on: '2026-03-01', ends_on: '2026-03-15' }] }
+    const u = user()
+    go('/tarefas')
+    await u.click(await screen.findByRole('button', { name: 'Sprints' }))
+    expect(screen.getByText('01/03/2026 → 15/03/2026')).toBeInTheDocument()
+    h.data = prev
+  })
+
   it('cria sprint com datas vazias como null', async () => {
     const u = user()
     go('/tarefas')

@@ -7,11 +7,11 @@ import App from '@/App'
 import type { DataState } from '@/data/DataProvider'
 import type { Page, Person, Project, ProjectMember, Task } from '@/lib/types'
 
-const h = vi.hoisted(() => ({ data: null as unknown }))
+const h = vi.hoisted(() => ({ data: null as unknown, access: 'owner' as 'owner' | 'member' }))
 
 vi.mock('@/auth/AuthProvider', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-  useAuth: () => ({ loading: false, email: 'ana@lasete.org', access: 'owner', signIn: vi.fn(), signOut: vi.fn() }),
+  useAuth: () => ({ loading: false, email: 'ana@lasete.org', access: h.access, accessError: false, retryAccess: vi.fn(), signIn: vi.fn(), signOut: vi.fn() }),
 }))
 vi.mock('@/data/DataProvider', () => ({
   DataProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -58,7 +58,10 @@ function go(path: string) {
     </MemoryRouter>,
   )
 }
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  h.access = 'owner'
+})
 
 describe('telas de leitura', () => {
   it('Visão geral lista os projetos na ordem de position', () => {
@@ -127,5 +130,42 @@ describe('telas de leitura', () => {
     cleanup()
     go('/nada')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Onde cada projeto está.')
+  })
+})
+
+describe('ajustes da visão geral e do projeto', () => {
+  it('dono vê "Pessoas com acesso"; membro não vê', () => {
+    go('/')
+    expect(screen.getByText('Pessoas com acesso')).toBeInTheDocument()
+    cleanup()
+    h.access = 'member'
+    go('/')
+    expect(screen.queryByText('Pessoas com acesso')).not.toBeInTheDocument()
+  })
+
+  it('o prazo preenchido substitui o fact "Prazo" em vez de aparecer duas vezes', () => {
+    const prev = h.data as DataState
+    h.data = {
+      ...prev,
+      projects: [project('pz', 1, 'Com prazo', { deadline: 'dez/2026', facts: [{ label: 'Prazo', value: 'a definir' }] })],
+    }
+    go('/projetos/pz')
+    expect(screen.getAllByText('Prazo')).toHaveLength(1)
+    expect(screen.getByText('dez/2026')).toBeInTheDocument()
+    expect(screen.queryByText('a definir')).not.toBeInTheDocument()
+    h.data = prev
+  })
+
+  it('aviso de recarga aparece no conteúdo com botão que chama reload()', async () => {
+    const prev = h.data as DataState
+    const reload = vi.fn(async () => {})
+    h.data = { ...prev, error: 'Não foi possível carregar os dados.', reload }
+    go('/')
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Não foi possível carregar os dados.')
+    expect(document.querySelector('header')).not.toContainElement(alert)
+    await userEvent.click(within(alert).getByRole('button', { name: 'Tentar de novo' }))
+    expect(reload).toHaveBeenCalledTimes(1)
+    h.data = prev
   })
 })

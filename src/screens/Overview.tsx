@@ -2,12 +2,14 @@ import { Link } from 'react-router'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading } from '@/blocks/Sections'
 import { ImportSeedButton } from '@/data/ImportSeedButton'
+import { useAuth } from '@/auth/AuthProvider'
 import { useData } from '@/data/DataProvider'
 import { overviewStats, progressOf } from '@/lib/derive'
 
 export default function Overview() {
+  const { access } = useAuth()
   const { projects, tasks, people, memberUids } = useData()
-  const stats = overviewStats(projects, tasks, people, memberUids)
+  const stats = overviewStats(projects, tasks, people, memberUids, access === 'owner')
   return (
     <>
       <header className="mb-14 max-w-3xl">
@@ -28,7 +30,7 @@ export default function Overview() {
         ))}
       </dl>
 
-      <SectionHeading index="01">Projetos em andamento</SectionHeading>
+      <SectionHeading index="01">Projetos</SectionHeading>
       <ol className="divide-y divide-border border-y border-border">
         {projects.map((p) => {
           const { done, total } = progressOf(p.id, tasks)

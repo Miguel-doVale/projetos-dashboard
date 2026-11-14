@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { motion } from 'motion/react'
 import { Header } from '@/shell/Header'
 import { motionEnabled, scrollToTop, useReveal, useSmoothScroll } from '@/lib/motion'
 
-export function Layout() {
+/** `banner` aparece no topo do conteúdo, abaixo do cabeçalho fixo. */
+export function Layout({ banner = null }: { banner?: ReactNode }) {
   const { pathname } = useLocation()
   const first = useRef(true)
   useSmoothScroll()
@@ -26,6 +28,7 @@ export function Layout() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: animate ? 0.2 : 0, ease: 'easeOut' }}
         >
+          {banner}
           <Outlet />
         </motion.div>
       </main>

@@ -40,7 +40,14 @@ export function hasAccess(person: Person, memberUids: string[]): boolean {
   return person.uid === import.meta.env.VITE_OWNER_UID || memberUids.includes(person.uid)
 }
 
-export function overviewStats(projects: Project[], tasks: Task[], people: Person[], memberUids: string[]): Fact[] {
+export function overviewStats(
+  projects: Project[],
+  tasks: Task[],
+  people: Person[],
+  memberUids: string[],
+  /** Só o dono consegue listar `members`; para os demais a contagem de acesso seria sempre 0. */
+  includeAccess = true,
+): Fact[] {
   const count = (kind: Project['kind']) => String(projects.filter((p) => p.kind === kind).length)
   return [
     { label: 'Projetos', value: count('projeto') },
@@ -51,6 +58,19 @@ export function overviewStats(projects: Project[], tasks: Task[], people: Person
       label: 'Com prazo definido',
       value: String(projects.filter((p) => typeof p.deadline === 'string' && p.deadline !== '').length),
     },
-    { label: 'Pessoas com acesso', value: String(people.filter((p) => hasAccess(p, memberUids)).length) },
+    ...(includeAccess
+      ? [{ label: 'Pessoas com acesso', value: String(people.filter((p) => hasAccess(p, memberUids)).length) }]
+      : []),
   ]
+}
+
+/** Facts do projeto mais o prazo. Um prazo preenchido substitui o fact "Prazo" (sem repetir). */
+export function factsOf(p: Pick<Project, 'facts' | 'deadline'>): Fact[] {
+  const deadline = p.deadline?.trim()
+  if (!deadline) return p.facts
+  const isDeadline = (f: Fact) => f.label.trim().toLowerCase() === 'prazo'
+  const at = p.facts.findIndex(isDeadline)
+  const rest = p.facts.filter((f) => !isDeadline(f))
+  const fact = { label: at >= 0 ? p.facts[at].label : 'Prazo', value: p.deadline as string }
+  return at >= 0 ? [...rest.slice(0, at), fact, ...rest.slice(at)] : [...rest, fact]
 }

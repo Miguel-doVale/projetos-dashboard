@@ -9,7 +9,7 @@ import { TaskForm, TaskOwnerActions } from '@/edit/TaskForm'
 import { StatusBadge } from '@/blocks/StatusBadge'
 import { SectionHeading, Sections } from '@/blocks/Sections'
 import { useData } from '@/data/DataProvider'
-import { teamOf } from '@/lib/derive'
+import { factsOf, teamOf } from '@/lib/derive'
 import { TaskList } from '@/tasks/TaskList'
 import { TaskSheet, useOpenTask } from '@/tasks/TaskSheet'
 
@@ -36,7 +36,7 @@ export default function ProjectPage() {
 
   const team = teamOf(project.id, members, people)
   const own = tasks.filter((t) => t.project_id === project.id)
-  const facts = [...project.facts, ...(project.deadline ? [{ label: 'Prazo', value: project.deadline }] : [])]
+  const facts = factsOf(project)
   let n = 0
   const idx = () => String(++n).padStart(2, '0')
 

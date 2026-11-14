@@ -88,6 +88,26 @@ describe('login e acesso', () => {
     expect(await screen.findByText(/Sem acesso/)).toBeInTheDocument()
   })
 
+  it('erro de rede ao ler members/{uid} mostra a tela de nova tentativa, não "Sem acesso"', async () => {
+    fake.failReads.set('members', Object.assign(new Error('offline'), { code: 'unavailable' }))
+    signedInAs(user)
+    renderApp()
+    expect(await screen.findByText('Não foi possível verificar seu acesso.')).toBeInTheDocument()
+    expect(screen.queryByText(/Sem acesso/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
+  })
+
+  it('"Tentar de novo" com a rede de volta entra no app', async () => {
+    fake.seed('members', 'u1', { person_id: 'x' })
+    fake.failReads.set('members', Object.assign(new Error('offline'), { code: 'unavailable' }))
+    signedInAs(user)
+    renderApp()
+    const retry = await screen.findByRole('button', { name: 'Tentar de novo' })
+    fake.failReads.clear()
+    await userEvent.click(retry)
+    expect(await screen.findByText('Visão geral')).toBeInTheDocument()
+  })
+
   it.each(['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'])(
     '%s mostra "E-mail ou senha incorretos." e continua no login',
     async (code) => {

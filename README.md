@@ -1,6 +1,6 @@
 # Dashboard de Projetos da LASETE
 
-Painel interno da Diretoria de Projetos: projetos, tarefas, sprints e pessoas da liga. O dono edita; membros com acesso só leem. React + Vite + Tailwind, dados no Firestore, login com Firebase Authentication.
+Painel interno da Diretoria de Projetos: projetos, tarefas, sprints e pessoas da liga. O dono edita tudo; membros com acesso leem tudo e podem marcar itens e mudar o status das tarefas. React + Vite + Tailwind, dados no Firestore, login com Firebase Authentication.
 
 ## Rodar
 
@@ -9,6 +9,8 @@ npm install
 cp .env.example .env.local   # preencha com as chaves do app web do Firebase
 npm run dev
 ```
+
+O conteúdo inicial (levantamento) é importado só pelo `npm run dev`, com o banco vazio, pelo botão "Importar conteúdo inicial"; ele não vai no build de produção.
 
 `.env.local` fica fora do git. `VITE_OWNER_UID` é o UID do dono (o mesmo de `firestore.rules`).
 
@@ -25,7 +27,7 @@ O dono é o usuário cujo UID está em `firestore.rules`. Para dar acesso a outr
 2. No app, abra a pessoa em Pessoas.
 3. Cole o UID e marque "Pode entrar no dashboard (membro)".
 
-Membros veem tudo e não editam nada.
+Membros veem tudo e só podem marcar itens e mudar o status das tarefas; criar, editar e apagar é só do dono.
 
 ## Publicar
 
@@ -36,11 +38,13 @@ npm run build
 npx firebase deploy --only hosting --project projetos-dashboard
 ```
 
-Regras do Firestore: em uma cópia de `firestore.rules`, troque `OWNER_UID_PLACEHOLDER` pelo UID do dono e publique essa cópia com `--only firestore:rules`. Nunca grave o UID real no arquivo versionado: os testes das regras dependem do placeholder.
+`firebase.json` tem só o Hosting, então um `firebase deploy` sem filtro não sobrescreve as regras. A configuração do Firestore e do emulador fica em `firebase.emulator.json` (usada por `npm run test:rules`).
+
+Regras do Firestore: faça uma cópia de `firestore.rules` fora do repositório, troque `OWNER_UID_PLACEHOLDER` pelo UID do dono e publique essa cópia com um `firebase.json` temporário que aponte para ela (`{"firestore": {"rules": "caminho/da/copia.rules"}}`) e `npx firebase deploy --only firestore:rules --project projetos-dashboard`. Nunca grave o UID real no arquivo versionado: os testes das regras dependem do placeholder.
 
 ## Exportar
 
-O botão "Exportar" do cabeçalho gera o painel em HTML (arquivo único, funciona offline), PDF e Markdown.
+O botão "Exportar" fica na tela Projetos (exporta todos os projetos) e em cada página de projeto (exporta aquele projeto). O menu tem "Baixar .html" (arquivo único, funciona offline), "Salvar .pdf" e "Baixar .md".
 
 ## Onde fica o quê
 

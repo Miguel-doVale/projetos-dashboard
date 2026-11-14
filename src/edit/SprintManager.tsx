@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { useData } from '@/data/DataProvider'
 import { ConfirmDelete } from '@/edit/ConfirmDelete'
 import { Field, FormError } from '@/edit/fields'
+import { formatDate } from '@/export/model'
 import { errorMessage, orNull } from '@/edit/util'
 import { save } from '@/lib/api'
 import type { Sprint } from '@/lib/types'
@@ -65,7 +66,7 @@ export function SprintManager({ onClose }: { onClose: () => void }) {
                   {s.name}
                   {(s.starts_on || s.ends_on) && (
                     <span className="ml-2 font-mono text-xs text-muted">
-                      {s.starts_on ?? '…'} → {s.ends_on ?? '…'}
+                      {s.starts_on ? formatDate(s.starts_on) : '…'} → {s.ends_on ? formatDate(s.ends_on) : '…'}
                     </span>
                   )}
                 </span>

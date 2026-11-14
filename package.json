@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-projetos-dashboard \"vitest run --config vitest.rules.config.ts\""
+    "test:rules": "firebase emulators:exec --config firebase.emulator.json --only firestore --project demo-projetos-dashboard \"vitest run --config vitest.rules.config.ts\""
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
