@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   remove: vi.fn(),
   setProjectTeam: vi.fn(),
   setMemberAccess: vi.fn(),
+  setAdminAccess: vi.fn(),
 }))
 
 vi.mock('@/auth/AuthProvider', () => ({
@@ -31,6 +32,7 @@ vi.mock('@/lib/api', () => ({
   remove: (...a: unknown[]) => h.remove(...a),
   setProjectTeam: (...a: unknown[]) => h.setProjectTeam(...a),
   setMemberAccess: (...a: unknown[]) => h.setMemberAccess(...a),
+  setAdminAccess: (...a: unknown[]) => h.setAdminAccess(...a),
   setItemDone: vi.fn(),
   setTaskStatus: vi.fn(),
 }))
@@ -48,7 +50,7 @@ const task = (id: string, project_id: string, position: number): Task => ({
 })
 
 const base = {
-  loading: false, error: null, loaded: true, memberUids: [], members: [], sprints: [],
+  loading: false, error: null, loaded: true, memberUids: [], adminUids: [], members: [], sprints: [],
   people: [person('a', 'Ana Souza'), person('b', 'Beto Lima')],
   projects: [project('p1', 1, 'Portal'), project('p2', 4, 'Gadget')],
   tasks: [task('t1', 'p1', 2), task('t2', 'p1', 7)],
@@ -81,6 +83,7 @@ beforeEach(() => {
   h.remove.mockReset().mockResolvedValue(undefined)
   h.setProjectTeam.mockReset().mockResolvedValue(undefined)
   h.setMemberAccess.mockReset().mockResolvedValue(undefined)
+  h.setAdminAccess.mockReset().mockResolvedValue(undefined)
 })
 afterEach(cleanup)
 
@@ -420,6 +423,70 @@ describe('pessoa: acesso', () => {
     expect(h.save.mock.calls[0][1].id).toBeUndefined()
     expect(h.save.mock.calls[1][1].id).toBe('novo')
     expect(h.setMemberAccess.mock.calls[1][0]).toMatchObject({ id: 'novo', uid: 'uid-9' })
+  })
+})
+
+describe('pessoa: administrador', () => {
+  const adminBox = { name: 'Administrador (pode editar tudo)' }
+  const adm = person('a', 'Ana Souza', { uid: 'uid-velho' })
+  const withAdmin = () => {
+    h.data = { ...base, reload: h.reload, people: [adm, person('b', 'Beto Lima')], adminUids: ['uid-velho'] } as DataState
+  }
+
+  it('quem edita (dono ou administrador) vê a caixa e marcar concede admin', async () => {
+    const u = user()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Nova pessoa' }))
+    await u.type(screen.getByLabelText('Nome'), 'Carla')
+    await u.type(screen.getByLabelText('UID do login'), 'uid-9')
+    await u.click(screen.getByRole('checkbox', adminBox))
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.setAdminAccess).toHaveBeenCalled())
+    expect(h.setAdminAccess.mock.calls[0][0]).toMatchObject({ id: 'novo', uid: 'uid-9' })
+    expect(h.setAdminAccess.mock.calls[0][1]).toBe(true)
+    expect(h.setMemberAccess.mock.calls.every((c) => c[1] === false)).toBe(true)
+  })
+
+  it('marcar sem UID mostra o erro e não salva', async () => {
+    const u = user()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Nova pessoa' }))
+    await u.type(screen.getByLabelText('Nome'), 'Carla')
+    await u.click(screen.getByRole('checkbox', adminBox))
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Informe o UID do login desta pessoa.')).toBeInTheDocument()
+    expect(h.save).not.toHaveBeenCalled()
+  })
+
+  it('trocar o UID de um admin retira o admin do antigo antes de dar o novo', async () => {
+    const u = user()
+    withAdmin()
+    go('/pessoas')
+    await u.click(await screen.findByRole('button', { name: 'Editar Ana Souza' }))
+    expect(screen.getByRole('checkbox', adminBox)).toBeChecked()
+    await u.clear(screen.getByLabelText('UID do login'))
+    await u.type(screen.getByLabelText('UID do login'), 'uid-novo')
+    await u.click(screen.getByRole('button', { name: 'Salvar' }))
+    await waitFor(() => expect(h.setAdminAccess).toHaveBeenCalledTimes(2))
+    const [first, second] = h.setAdminAccess.mock.calls
+    expect(first).toEqual([adm, false])
+    expect(second[0]).toMatchObject({ id: 'a', uid: 'uid-novo' })
+    expect(second[1]).toBe(true)
+    expect(h.setAdminAccess.mock.invocationCallOrder[0]).toBeLessThan(h.setAdminAccess.mock.invocationCallOrder[1])
+  })
+
+  it('selo "Admin" aparece para quem está em adminUids', async () => {
+    withAdmin()
+    go('/pessoas')
+    expect(await screen.findByText('Admin')).toBeInTheDocument()
+  })
+
+  it('membro não vê a caixa nem controles', async () => {
+    h.access = 'member'
+    go('/pessoas')
+    await screen.findByRole('navigation', { name: 'Principal' })
+    expect(screen.queryByRole('checkbox', adminBox)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Nova pessoa' })).not.toBeInTheDocument()
   })
 })
 

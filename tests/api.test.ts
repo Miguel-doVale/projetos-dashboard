@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { remove, runBatched, save, setItemDone, setMemberAccess, setProjectTeam, setTaskStatus } from '@/lib/api'
+import { remove, runBatched, save, setAdminAccess, setItemDone, setMemberAccess, setProjectTeam, setTaskStatus } from '@/lib/api'
 import { importSeed } from '@/data/importSeed'
 import { seedData } from '@/data/seedData'
 import type { Person } from '@/lib/types'
@@ -7,6 +7,10 @@ import * as fake from './helpers/fakeFirestore'
 import { hasNestedArray } from './helpers/nested'
 
 vi.mock('firebase/firestore', async () => await import('./helpers/fakeFirestore'))
+
+const person = (uid: string | null): Person => ({
+  id: 'b', created_at: null, name: 'Beto', role: null, area: null, email: null, uid,
+})
 
 beforeEach(() => {
   fake.reset()
@@ -153,10 +157,6 @@ describe('campos parciais e acesso', () => {
     expect(fake.read('tasks', 't1')).toMatchObject({ project_id: 'p1', status: 'doing' })
   })
 
-  const person = (uid: string | null): Person => ({
-    id: 'b', created_at: null, name: 'Beto', role: null, area: null, email: null, uid,
-  })
-
   it('setMemberAccess sem uid lança ao conceder', async () => {
     await expect(setMemberAccess(person(null), true)).rejects.toThrow('Informe o UID do login desta pessoa.')
   })
@@ -166,6 +166,35 @@ describe('campos parciais e acesso', () => {
     expect(fake.read('members', 'ub')).toEqual({ person_id: 'b' })
     await setMemberAccess(person('ub'), false)
     expect(fake.read('members', 'ub')).toBeUndefined()
+  })
+})
+
+describe('setAdminAccess', () => {
+  it('sem uid lança ao conceder e ignora ao retirar', async () => {
+    await expect(setAdminAccess(person(null), true)).rejects.toThrow('Informe o UID do login desta pessoa.')
+    await expect(setAdminAccess(person(null), false)).resolves.toBeUndefined()
+  })
+
+  it('cria e apaga admins/{uid}', async () => {
+    await setAdminAccess(person('ub'), true)
+    expect(fake.read('admins', 'ub')).toEqual({ person_id: 'b' })
+    await setAdminAccess(person('ub'), false)
+    expect(fake.read('admins', 'ub')).toBeUndefined()
+  })
+})
+
+describe('remove people e admins', () => {
+  it('apaga admins/{uid} junto com a pessoa', async () => {
+    fake.seed('admins', 'ua', { person_id: 'a' })
+    await remove('people', 'a')
+    expect(fake.ids('admins')).toEqual([])
+    expect(fake.ids('members')).toEqual([])
+  })
+
+  it('pessoa sem uid não mexe em admins', async () => {
+    fake.seed('admins', 'ua', { person_id: 'a' })
+    await remove('people', 'b')
+    expect(fake.ids('admins')).toEqual(['ua'])
   })
 })
 

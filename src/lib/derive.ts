@@ -34,10 +34,14 @@ export function progressOf(projectId: string, tasks: Task[]): { done: number; to
   return { done: own.filter((t) => t.status === 'done').length, total: own.length }
 }
 
-/** Pessoa com login que é a dona ou está em `members`. */
-export function hasAccess(person: Person, memberUids: string[]): boolean {
+/** Pessoa com login que é a dona, está em `admins` ou em `members`. */
+export function hasAccess(person: Person, memberUids: string[], adminUids: string[] = []): boolean {
   if (!person.uid) return false
-  return person.uid === import.meta.env.VITE_OWNER_UID || memberUids.includes(person.uid)
+  return (
+    person.uid === import.meta.env.VITE_OWNER_UID ||
+    memberUids.includes(person.uid) ||
+    adminUids.includes(person.uid)
+  )
 }
 
 export function overviewStats(
@@ -45,6 +49,7 @@ export function overviewStats(
   tasks: Task[],
   people: Person[],
   memberUids: string[],
+  adminUids: string[],
   /** Só o dono consegue listar `members`; para os demais a contagem de acesso seria sempre 0. */
   includeAccess = true,
 ): Fact[] {
@@ -59,7 +64,7 @@ export function overviewStats(
       value: String(projects.filter((p) => typeof p.deadline === 'string' && p.deadline !== '').length),
     },
     ...(includeAccess
-      ? [{ label: 'Pessoas com acesso', value: String(people.filter((p) => hasAccess(p, memberUids)).length) }]
+      ? [{ label: 'Pessoas com acesso', value: String(people.filter((p) => hasAccess(p, memberUids, adminUids)).length) }]
       : []),
   ]
 }

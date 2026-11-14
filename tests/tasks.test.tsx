@@ -39,7 +39,7 @@ const person = { created_at: null, role: null, area: null, email: null, uid: nul
 const project = { created_at: null, kind: 'projeto' as const, status_level: 'on' as const, status_label: 'x', summary: null, deadline: null, facts: [], sections: [] }
 
 const base = {
-  loading: false, error: null, loaded: true, memberUids: [], members: [], pages: [],
+  loading: false, error: null, loaded: true, memberUids: [], adminUids: [], members: [], pages: [],
   people: [{ ...person, id: 'a', name: 'Ana Souza' }],
   projects: [
     { ...project, id: 'p1', position: 1, number: '01', title: 'Portal' },

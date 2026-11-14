@@ -28,7 +28,7 @@ const project = (id: string, position: number, title: string, over: Partial<Proj
 })
 
 const base: DataState = {
-  loading: false, error: null, loaded: true, memberUids: [], reload: async () => {}, sprints: [], items: [],
+  loading: false, error: null, loaded: true, memberUids: [], adminUids: [], reload: async () => {}, sprints: [], items: [],
   people: [person('a', 'Ana Souza', 'Dev', 'Projetos'), person('b', 'Beto Lima', null, null)],
   projects: [
     project('p2', 2, 'Segundo'),

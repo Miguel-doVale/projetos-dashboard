@@ -5,7 +5,7 @@ import { useData } from '@/data/DataProvider'
 import { Field } from '@/edit/fields'
 import { FormDialog } from '@/edit/FormDialog'
 import { orNull } from '@/edit/util'
-import { save, setMemberAccess } from '@/lib/api'
+import { save, setAdminAccess, setMemberAccess } from '@/lib/api'
 import type { Person } from '@/lib/types'
 
 interface Props {
@@ -15,21 +15,23 @@ interface Props {
 }
 
 export function PersonForm({ person, onClose }: Props) {
-  const { memberUids, reload } = useData()
+  const { memberUids, adminUids, reload } = useData()
   const wasMember = !!person?.uid && memberUids.includes(person.uid)
+  const wasAdmin = !!person?.uid && adminUids.includes(person.uid)
   const [name, setName] = useState(person?.name ?? '')
   const [role, setRole] = useState(person?.role ?? '')
   const [area, setArea] = useState(person?.area ?? '')
   const [email, setEmail] = useState(person?.email ?? '')
   const [uid, setUid] = useState(person?.uid ?? '')
   const [member, setMember] = useState(wasMember)
+  const [admin, setAdmin] = useState(wasAdmin)
   // Pessoa nova já gravada: a nova tentativa atualiza em vez de inserir de novo.
   const savedId = useRef<string | null>(null)
 
   async function submit() {
     if (!name.trim()) throw new Error('Informe o nome.')
     const nextUid = orNull(uid)
-    if (member && !nextUid) throw new Error('Informe o UID do login desta pessoa.')
+    if ((member || admin) && !nextUid) throw new Error('Informe o UID do login desta pessoa.')
 
     const fields = {
       name: name.trim(),
@@ -48,6 +50,11 @@ export function PersonForm({ person, onClose }: Props) {
       // O UID mudou: o acesso do UID antigo é retirado antes de conceder o novo.
       if (wasMember && person?.uid && person.uid !== nextUid) await setMemberAccess(person, false)
       await setMemberAccess(target, member)
+    }
+    const adminChanged = admin !== wasAdmin || nextUid !== (person?.uid ?? null)
+    if (adminChanged) {
+      if (wasAdmin && person?.uid && person.uid !== nextUid) await setAdminAccess(person, false)
+      await setAdminAccess(target, admin)
     }
     await reload()
   }
@@ -74,6 +81,10 @@ export function PersonForm({ person, onClose }: Props) {
       <label className="flex items-center gap-2 text-sm">
         <Checkbox checked={member} onCheckedChange={(c) => setMember(c === true)} />
         Pode entrar no dashboard (membro)
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox checked={admin} onCheckedChange={(c) => setAdmin(c === true)} />
+        Administrador (pode editar tudo)
       </label>
     </FormDialog>
   )

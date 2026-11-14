@@ -21,7 +21,7 @@ vi.mock('@/data/DataProvider', () => ({
 }))
 
 const empty: DataState = {
-  loading: false, error: null, loaded: true, memberUids: [], reload: async () => {}, sprints: [], items: [],
+  loading: false, error: null, loaded: true, memberUids: [], adminUids: [], reload: async () => {}, sprints: [], items: [],
   people: [], projects: [], members: [], tasks: [], pages: [],
 }
 h.data = empty

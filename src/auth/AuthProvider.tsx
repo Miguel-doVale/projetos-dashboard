@@ -10,7 +10,7 @@ interface AuthState {
   loading: boolean
   email: string | null
   access: Access
-  /** A leitura de `members/{uid}` falhou (rede, início lento): o acesso é desconhecido, não negado. */
+  /** A leitura de `admins/{uid}` ou `members/{uid}` falhou (rede, início lento): o acesso é desconhecido, não negado. */
   accessError: boolean
   retryAccess(): void
   signIn(email: string, password: string): Promise<string | null>
@@ -75,15 +75,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (uid === import.meta.env.VITE_OWNER_UID) {
       settle('owner')
     } else {
-      getDoc(doc(db, 'members', uid)).then(
-        (snap) => settle(snap.exists() ? 'member' : 'none'),
-        (error) => {
-          const code = (error as { code?: string } | null)?.code
-          // Sem permissão para ler o próprio documento = não é membro. Qualquer outro erro é incerteza.
-          if (code === 'permission-denied' || code === 'firestore/permission-denied') settle('none')
-          else fail()
-        },
-      )
+      // Sem permissão para ler o próprio documento = não é. Qualquer outro erro é incerteza.
+      const check = (col: 'admins' | 'members') =>
+        getDoc(doc(db, col, uid)).then(
+          (snap) => snap.exists(),
+          (error) => {
+            const code = (error as { code?: string } | null)?.code
+            if (code === 'permission-denied' || code === 'firestore/permission-denied') return false
+            throw error
+          },
+        )
+      check('admins')
+        .then((isAdmin) => (isAdmin ? 'owner' : check('members').then((m): Access => (m ? 'member' : 'none'))))
+        .then(settle, fail)
     }
     return () => {
       active = false

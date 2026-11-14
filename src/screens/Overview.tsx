@@ -17,12 +17,12 @@ const Constellation = lazy(() => import('@/fx/constellation/Constellation'))
 
 export default function Overview() {
   const { access } = useAuth()
-  const { projects, tasks, people, members, memberUids } = useData()
+  const { projects, tasks, people, members, memberUids, adminUids } = useData()
   const graph = useMemo(() => buildGraph(projects, members), [projects, members])
   const navigate = useNavigate()
   const glow = usePointerGlow({ tilt: false }) // as células ficam num contêiner com overflow-hidden
   const open = (id: string) => navigate(`/projetos/${id}`)
-  const stats = overviewStats(projects, tasks, people, memberUids, access === 'owner')
+  const stats = overviewStats(projects, tasks, people, memberUids, adminUids, access === 'owner')
   return (
     <>
       <div className="mb-14 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-center lg:gap-10">

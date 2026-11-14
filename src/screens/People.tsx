@@ -10,10 +10,18 @@ import { useData } from '@/data/DataProvider'
 import { projectsOf } from '@/lib/derive'
 import type { Person } from '@/lib/types'
 
+function Badge({ children }: { children: string }) {
+  return (
+    <span className="rounded-full border border-border px-2 py-0.5 font-mono text-[10px] font-normal uppercase tracking-wide text-muted">
+      {children}
+    </span>
+  )
+}
+
 const NO_AREA = 'Sem diretoria'
 
 export default function People() {
-  const { people, members, projects } = useData()
+  const { people, members, projects, adminUids } = useData()
   const owner = useAuth().access === 'owner'
   // `null` fecha; `'new'` cria; uma pessoa edita.
   const [form, setForm] = useState<Person | 'new' | null>(null)
@@ -41,7 +49,11 @@ export default function People() {
               const mine = projectsOf(p.id, members, projects)
               return (
                 <li key={p.id} data-reveal className="rounded-xl border border-border bg-surface-raised px-4 py-4">
-                  <p className="text-sm font-medium text-foreground">{p.name}</p>
+                  <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    {p.name}
+                    {p.uid && p.uid === import.meta.env.VITE_OWNER_UID && <Badge>Dono</Badge>}
+                    {p.uid && adminUids.includes(p.uid) && <Badge>Admin</Badge>}
+                  </p>
                   {p.role && <p className="mt-0.5 font-mono text-xs text-muted">{p.role}</p>}
                   {mine.length > 0 && (
                     <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">

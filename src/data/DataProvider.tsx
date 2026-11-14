@@ -29,6 +29,8 @@ export interface DataState {
   pages: Page[]
   /** UIDs em `members`. Só o dono consegue listar; para os demais fica vazio. */
   memberUids: string[]
+  /** UIDs em `admins`. Só dono e administradores conseguem listar; para os demais fica vazio. */
+  adminUids: string[]
   reload(): Promise<void>
 }
 
@@ -43,6 +45,7 @@ const EMPTY: Loaded = {
   items: [],
   pages: [],
   memberUids: [],
+  adminUids: [],
 }
 
 // Tabelas que têm coluna `position` são ordenadas por ela.
@@ -92,6 +95,15 @@ async function fetchMemberUids(): Promise<string[]> {
   }
 }
 
+async function fetchAdminUids(): Promise<string[]> {
+  try {
+    const snap = await getDocs(collection(db, 'admins'))
+    return snap.docs.map((d) => d.id)
+  } catch {
+    return []
+  }
+}
+
 const DataContext = createContext<DataState | null>(null)
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -110,7 +122,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Sem dados ainda (primeira carga ou nova tentativa): volta para "Carregando…".
     if (!hasData.current) setLoading(true)
     try {
-      const [people, projects, members, sprints, tasks, items, pages, memberUids] = await Promise.all([
+      const [people, projects, members, sprints, tasks, items, pages, memberUids, adminUids] = await Promise.all([
         fetchTable<Person>('people'),
         fetchTable<Project>('projects'),
         fetchTable<ProjectMember>('project_members'),
@@ -119,6 +131,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         fetchTable<TaskItem>('task_items'),
         fetchTable<Page>('pages'),
         access === 'owner' ? fetchMemberUids() : Promise.resolve<string[]>([]),
+        access === 'owner' ? fetchAdminUids() : Promise.resolve<string[]>([]),
       ])
       // Resposta fora de ordem: só a mais recente vale.
       if (!mounted.current || run !== latest.current) return
@@ -132,6 +145,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         items,
         pages,
         memberUids,
+        adminUids,
       })
       setLoaded(true)
       setLoading(false)

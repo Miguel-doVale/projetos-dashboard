@@ -83,7 +83,11 @@ async function removalOps(table: TableName, id: string): Promise<WriteOp[]> {
     del(await refsWhere('project_members', 'person_id', id))
     const snap = await getDoc(doc(db, 'people', id))
     const uid = (snap.data() as Partial<Person> | undefined)?.uid
-    if (uid) ops.push({ type: 'delete', ref: doc(db, 'members', uid) })
+    if (uid) {
+      ops.push({ type: 'delete', ref: doc(db, 'members', uid) })
+      // Só dono e administradores apagam pessoas, e todos eles podem apagar admins/{uid}.
+      ops.push({ type: 'delete', ref: doc(db, 'admins', uid) })
+    }
     clear(await refsWhere('tasks', 'assignee_id', id), 'assignee_id')
   } else if (table === 'sprints') {
     clear(await refsWhere('tasks', 'sprint_id', id), 'sprint_id')
@@ -162,5 +166,16 @@ export async function setMemberAccess(person: Person, isMember: boolean): Promis
   const ref = doc(db, 'members', person.uid)
   await guard('Não foi possível atualizar o acesso. Tente de novo.', () =>
     isMember ? setDoc(ref, encodeForFirestore({ person_id: person.id })) : deleteDoc(ref),
+  )
+}
+
+export async function setAdminAccess(person: Person, isAdmin: boolean): Promise<void> {
+  if (!person.uid) {
+    if (isAdmin) throw new Error('Informe o UID do login desta pessoa.')
+    return
+  }
+  const ref = doc(db, 'admins', person.uid)
+  await guard('Não foi possível atualizar o acesso. Tente de novo.', () =>
+    isAdmin ? setDoc(ref, encodeForFirestore({ person_id: person.id })) : deleteDoc(ref),
   )
 }

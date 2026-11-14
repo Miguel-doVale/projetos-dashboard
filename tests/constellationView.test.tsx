@@ -14,7 +14,7 @@ const project = (id: string, position: number): Project => ({
   id, created_at: null, position, number: `0${position}`, title: `Projeto ${id}`, kind: 'projeto',
   status_level: 'on', status_label: 'Em andamento', summary: null, deadline: null, facts: [], sections: [],
 })
-h.data = { projects: [project('p1', 1), project('p2', 2)], members: [], tasks: [], people: [], memberUids: [] }
+h.data = { projects: [project('p1', 1), project('p2', 2)], members: [], tasks: [], people: [], memberUids: [], adminUids: [] }
 
 afterEach(cleanup)
 

@@ -43,6 +43,7 @@ describe('derive', () => {
       [task('1', 'p', 'done'), task('2', 'p', 'todo')],
       [person('a', 'Ana', 'ua'), person('b', 'Bia', 'ub'), person('c', 'Caio')],
       ['ua'],
+      ['ub'],
     )
     const get = (l: string) => stats.find((s) => s.label === l)?.value
     expect(get('Projetos')).toBe('2')
@@ -50,7 +51,7 @@ describe('derive', () => {
     expect(get('Colaborações')).toBe('0')
     expect(get('Tarefas feitas')).toBe('1/2')
     expect(get('Com prazo definido')).toBe('1')
-    expect(get('Pessoas com acesso')).toBe('1')
+    expect(get('Pessoas com acesso')).toBe('2')
   })
 })
 
@@ -78,8 +79,8 @@ describe('factsOf', () => {
 
 describe('overviewStats sem acesso do dono', () => {
   it('omite "Pessoas com acesso" quando includeAccess é falso', () => {
-    const labels = overviewStats([], [], [], [], false).map((s) => s.label)
+    const labels = overviewStats([], [], [], [], [], false).map((s) => s.label)
     expect(labels).not.toContain('Pessoas com acesso')
-    expect(overviewStats([], [], [], []).map((s) => s.label)).toContain('Pessoas com acesso')
+    expect(overviewStats([], [], [], [], []).map((s) => s.label)).toContain('Pessoas com acesso')
   })
 })

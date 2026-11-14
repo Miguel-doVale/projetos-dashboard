@@ -18,7 +18,7 @@ const project = (id: string, position: number): Project => ({
 })
 h.data = {
   projects: [project('p1', 1), project('p2', 2)],
-  members: [] as ProjectMember[], tasks: [], people: [], memberUids: [],
+  members: [] as ProjectMember[], tasks: [], people: [], memberUids: [], adminUids: [],
 }
 
 function stubMatchMedia(reduce: boolean) {

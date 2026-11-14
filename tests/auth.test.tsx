@@ -64,6 +64,32 @@ describe('login e acesso', () => {
     expect(fake.reads).toContain('projects')
   })
 
+  it('admins/{uid} existe: administrador carrega o app com controles de edição, sem ser dono raiz', async () => {
+    fake.seed('admins', 'u1', { person_id: 'x' })
+    signedInAs(user)
+    renderApp()
+    expect(await screen.findByText('Visão geral')).toBeInTheDocument()
+    expect(fake.reads).toContain('projects')
+    expect(fake.reads.filter((c) => c === 'members')).toHaveLength(1) // só a listagem de membros do admin
+    expect(fake.reads.filter((c) => c === 'admins')).toHaveLength(2) // o getDoc do próprio UID e a listagem
+    expect(await screen.findByRole('link', { name: /Pessoas/ })).toBeInTheDocument()
+  })
+
+  it('erro de rede ao ler admins/{uid} mostra a tela de nova tentativa', async () => {
+    fake.failReads.set('admins', Object.assign(new Error('offline'), { code: 'unavailable' }))
+    signedInAs(user)
+    renderApp()
+    expect(await screen.findByText('Não foi possível verificar seu acesso.')).toBeInTheDocument()
+  })
+
+  it('permission-denied ao ler admins/{uid} cai para members', async () => {
+    fake.seed('members', 'u1', { person_id: 'x' })
+    fake.failReads.set('admins', Object.assign(new Error('x'), { code: 'permission-denied' }))
+    signedInAs(user)
+    renderApp()
+    expect(await screen.findByText('Visão geral')).toBeInTheDocument()
+  })
+
   it('members/{uid} existe: membro carrega o app e não lista members', async () => {
     fake.seed('members', 'u1', { person_id: 'x' })
     signedInAs(user)
@@ -78,7 +104,7 @@ describe('login e acesso', () => {
     renderApp()
     expect(await screen.findByText(/Sem acesso/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
-    expect(fake.reads.filter((c) => c !== 'members')).toEqual([])
+    expect(fake.reads.filter((c) => c !== 'members' && c !== 'admins')).toEqual([])
   })
 
   it('erro de permissão ao ler members/{uid} vira "Sem acesso"', async () => {

@@ -1,6 +1,6 @@
 # Dashboard de Projetos da LASETE
 
-Painel interno da Diretoria de Projetos: projetos, tarefas, sprints e pessoas da liga. O dono edita tudo; membros com acesso leem tudo e podem marcar itens e mudar o status das tarefas. React + Vite + Tailwind, dados no Firestore, login com Firebase Authentication.
+Painel interno da Diretoria de Projetos: projetos, tarefas, sprints e pessoas da liga. O dono e os administradores editam tudo; membros com acesso leem tudo e podem marcar itens e mudar o status das tarefas. React + Vite + Tailwind, dados no Firestore, login com Firebase Authentication.
 
 ## Rodar
 
@@ -21,13 +21,19 @@ O conteúdo inicial (levantamento) é importado só pelo `npm run dev`, com o ba
 
 ## Acesso
 
-O dono é o usuário cujo UID está em `firestore.rules`. Para dar acesso a outra pessoa:
+Há três níveis:
+
+- **Dono**: o usuário cujo UID está em `firestore.rules` (e em `VITE_OWNER_UID`). Edita tudo e nomeia administradores. Como ele vem das regras e não de um documento, não pode ser removido pelo app.
+- **Administrador**: tem o documento `admins/{uid}`. Tem os mesmos poderes de edição do dono, inclusive nomear e remover outros administradores (o dono nunca é afetado).
+- **Membro**: tem `members/{uid}`. Vê tudo e só pode marcar itens e mudar o status das tarefas.
+
+Para dar acesso a outra pessoa:
 
 1. No console do Firebase, em Authentication, crie o usuário (e-mail e senha) e copie o UID.
 2. No app, abra a pessoa em Pessoas.
 3. Cole o UID e marque "Pode entrar no dashboard (membro)".
 
-Membros veem tudo e só podem marcar itens e mudar o status das tarefas; criar, editar e apagar é só do dono.
+Para nomear um administrador, faça os mesmos passos e marque "Administrador (pode editar tudo)". O dono e os administradores veem essa caixa; desmarcar retira o nível. Apagar a pessoa também apaga o acesso dela. Ao publicar as regras, publique-as antes de nomear o primeiro administrador.
 
 No quadro de tarefas, arrastar um card para outra coluna muda o status (dono e membros). Pelo teclado: Espaço pega o card, as setas trocam de coluna, Espaço solta e Esc cancela; Enter abre a tarefa.
 
