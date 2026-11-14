@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { usePointerGlow } from '@/fx/usePointerGlow'
 import { motionEnabled } from '@/lib/motion'
@@ -9,11 +10,22 @@ import { TaskStatusIcon } from '@/tasks/TaskStatusIcon'
 
 const COLUMNS: Task['status'][] = ['todo', 'doing', 'done']
 
+/** Quantas tarefas cada projeto mostra por coluna antes do "mostrar mais": mantém o quadro curto. */
+export const BOARD_PREVIEW = 3
+
 export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: string) => void }) {
   const { projects, people } = useData()
   const animate = motionEnabled()
   const glow = usePointerGlow()
   const personName = new Map(people.map((p) => [p.id, p.name]))
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
@@ -41,7 +53,7 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
                   </h3>
                   <ul className="space-y-2">
                     <AnimatePresence initial={false}>
-                      {g.tasks.map((t) => (
+                      {(expanded.has(groupKey(status, g.project?.id)) ? g.tasks : g.tasks.slice(0, BOARD_PREVIEW)).map((t) => (
                         // layoutId: a tarefa que muda de coluna desliza para a nova. A coluna (data-reveal) é quem faz o reveal; o item só anima layout.
                         <motion.li
                           key={t.id}
@@ -74,6 +86,18 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
                       ))}
                     </AnimatePresence>
                   </ul>
+                  {g.tasks.length > BOARD_PREVIEW && (
+                    <button
+                      type="button"
+                      aria-expanded={expanded.has(groupKey(status, g.project?.id))}
+                      onClick={() => toggle(groupKey(status, g.project?.id))}
+                      className="mt-2 w-full rounded-lg px-2 py-1.5 text-left font-mono text-xs text-muted outline-none hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      {expanded.has(groupKey(status, g.project?.id))
+                        ? 'Mostrar menos'
+                        : `Mostrar mais ${g.tasks.length - BOARD_PREVIEW}`}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -82,4 +106,8 @@ export function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (taskId: s
       })}
     </div>
   )
+}
+
+function groupKey(status: Task['status'], projectId: string | undefined): string {
+  return `${status}:${projectId ?? 'sem-projeto'}`
 }
